@@ -6,9 +6,9 @@
 #
 
 PRODUCT_MAKEFILES := \
-    $(LOCAL_DIR)/omni_pdx256.mk
+    $(LOCAL_DIR)/twrp_pdx256.mk
 
 COMMON_LUNCH_CHOICES := \
-    omni_pdx256-user \
-    omni_pdx256-userdebug \
-    omni_pdx256-eng
+    twrp_pdx256-user \
+    twrp_pdx256-userdebug \
+    twrp_pdx256-eng
