@@ -157,8 +157,27 @@ TARGET_USES_LOGD := true
 # keymint blob 은 빌드 모듈이 아니라 prebuilt 파일이므로 blobs.mk 의
 # PRODUCT_COPY_FILES 로 넣습니다. TARGET_RECOVERY_DEVICE_MODULES 에 적으면
 # "module not found" 로 빌드가 실패합니다.
-TW_INCLUDE_CRYPTO := true
-TW_INCLUDE_CRYPTO_FBE := true
+# 암호화 지원을 통째로 끕니다. 이유:
+#
+# bootable/recovery/Android.mk:348 이
+#   ifeq ($(TW_INCLUDE_CRYPTO), true)
+#       ...
+#       LOCAL_CFLAGS += -DTW_INCLUDE_FBE_METADATA_DECRYPT   <- 조건 없이 무조건
+# 이라서 TW_INCLUDE_FBE_METADATA_DECRYPT 를 false 로 둬도 무한 대기하는
+# fscrypt_mount_metadata_encrypted() 경로가 빌드에 그대로 들어갑니다.
+# (false 로 빌드한 뒤 recovery 바이너리 문자열로 실제 확인했습니다)
+#
+# 그 호출은 keystore2 -> keymint 를 binder 로 부르는데 keystore2 가 리커버리에서
+# 죽어 있어 응답이 없고, TWRP 가 splash 에서 멈춰 메뉴가 아예 뜨지 않습니다.
+#
+# "false" 가 아니라 정의 자체를 하지 않는 이유: Android.mk:581 이
+#   ifneq ($(TW_INCLUDE_CRYPTO),)
+# 로도 검사해서 false 조차 참으로 동작합니다 (DTB 플래그와 같은 함정).
+#
+# 되살리려면 아래 주석을 풀되, 그 전에 keystore2 가 리커버리에서 살아남아야 하고
+# TWRP 의 keymaster 버전 오판(4.x -> keymint)도 함께 고쳐야 합니다.
+# TW_INCLUDE_CRYPTO := true
+# TW_INCLUDE_CRYPTO_FBE := true
 # 이 플래그를 켜면 partitionmanager.cpp:688 의
 #   android::vold::fscrypt_mount_metadata_encrypted(...)
 # 가 실행되는데, 이 호출은 keystore2 -> keymint 를 binder 로 부르고
@@ -172,8 +191,8 @@ TW_INCLUDE_CRYPTO_FBE := true
 # (플래싱, boot/vendor/vbmeta 백업, fastbootd, adb sideload) 은 전부 됩니다.
 # 복호화를 다시 시도하려면 이 줄을 true 로 되돌리면 됩니다. 다만 그 전에
 # keystore2 가 리커버리에서 살아있게 만드는 것이 선행되어야 합니다.
-TW_INCLUDE_FBE_METADATA_DECRYPT := false
-TW_USE_FSCRYPT_POLICY := 2
+# TW_INCLUDE_FBE_METADATA_DECRYPT := true   (TW_INCLUDE_CRYPTO 와 함께 되살릴 것)
+# TW_USE_FSCRYPT_POLICY := 2   (TW_INCLUDE_CRYPTO 와 함께 되살릴 것)
 # android-14 부터 PLATFORM_SECURITY_PATCH 를 직접 지정하면 빌드가 에러로 막습니다:
 #   "Do not set PLATFORM_SECURITY_PATCH directly. Use RELEASE_PLATFORM_SECURITY_PATCH."
 # PLATFORM_VERSION 도 RELEASE_PLATFORM_VERSION 에서 유도되므로 건드리지 않습니다.
