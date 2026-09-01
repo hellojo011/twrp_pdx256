@@ -87,6 +87,18 @@ TARGET_RECOVERY_FSTAB := $(DEVICE_PATH)/recovery/root/system/etc/recovery.fstab
 AB_OTA_UPDATER := true
 AB_OTA_PARTITIONS += boot dtbo init_boot odm recovery system_dlkm vbmeta vendor vendor_boot vendor_dlkm
 BOARD_USES_METADATA_PARTITION := true
+
+# 이 기기는 super 안에 실제 vendor 파티션이 있습니다. 이걸 선언하지 않으면
+# TARGET_COPY_OUT_VENDOR 가 비-Treble 기본값 "system/vendor" 로 남고,
+# system/core/rootdir/Android.mk:117 이 /vendor 를 /system/vendor 로 가는
+# 심볼릭 링크로 만듭니다. 그런데 bootable/recovery/prebuilt/Android.mk 의
+# twrp_ramdisk 는 recovery/root/vendor 를 실제 디렉터리로 만들기 때문에,
+# 램디스크 조립의 rsync 가 "could not make way for new symlink" 로 죽습니다.
+# "vendor" 로 두면 board_config.mk:679 가 BOARD_USES_VENDORIMAGE 를 켜서
+# root/vendor 가 실제 디렉터리가 되고 두 쪽이 병합됩니다.
+# BOARD_VENDORIMAGE_FILE_SYSTEM_TYPE 은 일부러 두지 않습니다 -- 그걸 넣으면
+# BUILDING_VENDOR_IMAGE 가 켜져서 필요도 없는 vendor.img 를 빌드합니다.
+TARGET_COPY_OUT_VENDOR := vendor
 # PRODUCT_USE_DYNAMIC_PARTITIONS 는 제품 변수라 BoardConfig 에서 못 씁니다.
 # (board_config.mk 는 제품 설정 이후에 실행돼 그 시점엔 readonly)
 # -> twrp_pdx256.mk 로 옮겼습니다.

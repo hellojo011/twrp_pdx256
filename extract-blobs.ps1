@@ -3,7 +3,7 @@
 
 $ErrorActionPreference = 'Stop'
 $here = Split-Path -Parent $MyInvocation.MyCommand.Path
-$out  = Join-Path $here 'recovery\root\system'   # /vendor 는 심볼릭 링크라 system\vendor 아래에 둡니다
+$out  = Join-Path $here 'recovery\root'
 $list = Join-Path $here 'proprietary-files.txt'
 
 $adb = (Get-Command adb -ErrorAction SilentlyContinue).Source
@@ -38,7 +38,7 @@ Get-Content $list | ForEach-Object {
 }
 
 ""
-"성공 $ok / 실패 $fail  ->  recovery\root\system\vendor\"
+"성공 $ok / 실패 $fail  ->  recovery\root\vendor\"
 ""
 "검증: ELF 헤더 확인 (7f 45 4c 46 이면 정상)"
 Get-ChildItem -Path (Join-Path $out 'vendor') -Recurse -Filter *.so -ErrorAction SilentlyContinue |
