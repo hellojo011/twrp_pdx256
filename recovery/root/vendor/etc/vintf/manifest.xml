@@ -1,0 +1,32 @@
+<!--
+    servicemanager(libvintf)가 읽는 표준 경로입니다. 이 파일이 없으면:
+      servicemanager: getDeviceHalManifest: -2 VINTF parse error:
+      Cannot read /vendor/manifest.xml: No such file or directory
+    그러면 IKeyMintDevice/default 가 "선언되지 않은" HAL 이 되어 등록이 거부되고,
+    keymint 프로세스는 살아있어도 service list 에 잡히지 않습니다.
+    manifest_sun.xml 은 TWRP 가 keymaster 버전을 판별할 때 읽는 별개 경로라
+    둘 다 필요합니다. 내용은 동일합니다.
+-->
+<manifest version="8.0" type="device" target-level="202404">
+    <hal format="aidl">
+        <name>android.hardware.security.keymint</name>
+        <version>3</version>
+        <fqname>IKeyMintDevice/default</fqname>
+    </hal>
+    <hal format="aidl">
+        <name>android.hardware.security.keymint</name>
+        <version>3</version>
+        <fqname>IRemotelyProvisionedComponent/default</fqname>
+    </hal>
+    <hal format="aidl">
+        <name>android.hardware.security.secureclock</name>
+        <fqname>ISecureClock/default</fqname>
+    </hal>
+    <hal format="aidl">
+        <name>android.hardware.security.sharedsecret</name>
+        <fqname>ISharedSecret/default</fqname>
+    </hal>
+    <sepolicy>
+        <version>202404</version>
+    </sepolicy>
+</manifest>
