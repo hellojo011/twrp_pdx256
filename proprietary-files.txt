@@ -54,6 +54,30 @@ vendor/etc/init/android.hardware.security.keymint-service-qti.rc
 vendor/etc/init/qseecomd.rc
 vendor/etc/vintf/manifest/android.hardware.security.keymint-service-qti.xml
 
+# --- TZ 리스너 서비스 (qseecomd 가 dlopen) -----------------------------
+# qseecomd 는 이 라이브러리들을 dlopen 으로 로드합니다. DT_NEEDED 에 없으므로
+# 정적 의존성 분석으로는 잡히지 않고, 하나라도 빠지면 리스너 등록 전체가
+# 실패하면서 qseecomd 가 255 로 종료합니다:
+#   ListenerMngr: Init dlopen(librpmb.so, RLTD_NOW) is failed....
+#   QSEECOMD: ERROR: Failed to start listener services.
+# 리스너가 없으면 keymaster TA 가 콜백을 못 해 keymint 가 등록되지 못하고,
+# keystore2 는 NAME_NOT_FOUND 로 panic 합니다.
+vendor/lib64/libGPreqcancel.so
+vendor/lib64/libGPreqcancel_svc.so
+vendor/lib64/libdrmtime.so
+vendor/lib64/libgpt.so
+vendor/lib64/libops.so
+vendor/lib64/libqisl.so
+vendor/lib64/librpmb.so
+vendor/lib64/libspl.so
+vendor/lib64/libssd.so
+
+# 위 리스너들의 DT_NEEDED 의존성
+vendor/lib64/android.hardware.common-V2-ndk.so
+vendor/lib64/libdrm.so
+vendor/lib64/libtime_genoff.so
+vendor/lib64/vendor.qti.hardware.display.config-V7-ndk.so
+
 # --- vintf (직접 작성, 추출본 아님) ------------------------------------
 # vendor/etc/vintf/manifest_sun.xml 은 device tree 에 직접 넣어두었습니다.
 # TWRP 가 keymint 버전을 판별할 때 읽는 파일이며, 순정 파일을 그대로 쓰면
