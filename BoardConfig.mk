@@ -23,7 +23,7 @@ TARGET_CPU_VARIANT := generic
 TARGET_CPU_VARIANT_RUNTIME := cortex-a76
 TARGET_SUPPORTS_32_BIT_APPS := false
 TARGET_SUPPORTS_64_BIT_APPS := true
-TARGET_USES_64_BIT_BINDER := true
+# TARGET_USES_64_BIT_BINDER 는 android-14 에서 deprecated (모든 기기가 기본 64비트)
 
 # --- Kernel --------------------------------------------------------------
 # boot.img: header v4, kernel_size=36596224, ramdisk_size=0  (GKI, 커널 전용)
