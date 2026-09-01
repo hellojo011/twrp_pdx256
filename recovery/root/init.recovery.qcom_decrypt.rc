@@ -3,6 +3,10 @@ import /init.recovery.qcom_decrypt.fbe.rc
 
 on fs
     # needed to make qseecomd work in recovery
+    # /dev/smcinvoke 권한이 이 기기의 실제 병목이었습니다. ueventd 규칙
+    # (vendor/etc/ueventd.rc) 으로도 설정하지만, 순서를 보장하려고 여기서도 겁니다.
+    chmod 0660 /dev/smcinvoke
+    chown system drmrpc /dev/smcinvoke
     chmod 0660 /dev/qseecom
     chown system drmrpc /dev/qseecom
     chmod 0664 /dev/ion

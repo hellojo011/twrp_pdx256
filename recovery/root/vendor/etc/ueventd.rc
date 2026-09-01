@@ -1,0 +1,23 @@
+# ueventd 가 만드는 디바이스 노드의 소유자/권한.
+#
+# 이 파일이 없으면 /dev/smcinvoke 가 기본값 root:root 0600 으로 남습니다.
+# qseecomd 는 자기 자신이 열어볼 때는 root 라 성공하지만, fork 한 자식이
+# 권한을 낮춘 뒤 libminkdescriptor 로 다시 열 때 실패합니다:
+#   QSEECOMD: SUCCESS: While opening the device /dev/smcinvoke   <- 첫 open (root)
+#   SmcInvoke_MinkDescriptor: Failed to open invoke driver, errno = 13
+#   SmcInvoke_TZCom: TZCom_getRootEnvObject ret=1
+#   ListenerMngr: Error -1 getting clientEnv
+# 그러면 TZ 리스너가 하나도 등록되지 못하고, keymint 는 TA 콜백 경로가 없어
+# 등록에 실패하며, keystore2 는 NAME_NOT_FOUND 로 죽고, TWRP 는 splash 에서 멈춥니다.
+#
+# 값은 순정 /vendor/etc/ueventd.rc 에서 그대로 가져왔습니다.
+# 기기에서 이 권한만 손으로 맞춰주니 vendor.sys.listeners.registered=true 가
+# 뜨고 keymint 4개 인스턴스가 전부 등록되는 것을 확인했습니다.
+/dev/smcinvoke            0660   system     drmrpc
+/dev/qseecom              0660   system     drmrpc
+/dev/ion                  0664   system     system
+
+subsystem dma_heap
+    devname uevent_devpath
+    dirname /dev/dma_heap
+/dev/dma_heap/qcom,*      0444   system     system
