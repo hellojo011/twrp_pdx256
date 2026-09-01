@@ -1,0 +1,24 @@
+# Windows 에서 core.autocrlf 가 켜져 있으면 셸 스크립트와 init .rc 가 CRLF 로
+# 체크아웃되어 깨집니다 (Git Bash 실행 실패, Android init 파싱 실패).
+# 아래 파일들은 플랫폼과 무관하게 항상 LF 로 고정합니다.
+* text=auto eol=lf
+
+*.sh    text eol=lf
+*.mk    text eol=lf
+*.rc    text eol=lf
+*.xml   text eol=lf
+*.fstab text eol=lf
+*.txt   text eol=lf
+*.md    text eol=lf
+
+# PowerShell 스크립트는 CRLF 가 자연스럽습니다
+*.ps1   text eol=crlf
+
+# 바이너리는 절대 변환하지 않습니다
+*.img          binary
+*.so           binary
+*.lz4          binary
+*.cpio         binary
+prebuilt/**    binary
+recovery/root/system/vendor/bin/**   binary
+recovery/root/system/vendor/lib64/** binary
