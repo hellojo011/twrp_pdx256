@@ -7,7 +7,8 @@ LOCAL_PATH := device/sony/pdx256
 
 # 64비트 전용 기기 (abilist32 이 비어 있음)
 $(call inherit-product, $(SRC_TARGET_DIR)/product/core_64_bit.mk)
-# embedded.mk 는 Android 12.1 에서 삭제되었습니다. 이 트리에는 base.mk 만 존재합니다.
+# embedded.mk 는 Android 12.1 에서 삭제됐고 android-14 에도 없습니다 (확인함).
+# base.mk / core_64_bit.mk 는 두 브랜치 모두에 존재합니다.
 $(call inherit-product, $(SRC_TARGET_DIR)/product/base.mk)
 $(call inherit-product, vendor/twrp/config/common.mk)
 
@@ -21,11 +22,11 @@ PRODUCT_MODEL := Pdx256
 PRODUCT_MANUFACTURER := Sony
 PRODUCT_RELEASE_NAME := pdx256
 
-# 기기는 SDK 35 지만 OrangeFox/TWRP 12.1 트리(Android 12.1 기반)에는
-# VNDK 35 스냅샷이 없습니다. 여기에 35 를 넣으면 sync 직후 빌드가 깨집니다.
-# 리커버리는 VTS 대상이 아니므로 지정하지 않는 편이 안전합니다.
-# PRODUCT_SHIPPING_API_LEVEL := 32
-# PRODUCT_TARGET_VNDK_VERSION := 32
+# 기기는 SDK 35 지만 트리는 android-14 (API 34) 입니다.
+# 플랫폼보다 높은 shipping API 를 지정할 이유가 없고, VNDK 는 Android 14 에서
+# 사실상 폐기됐습니다. 리커버리는 VTS 대상이 아니므로 둘 다 지정하지 않습니다.
+# PRODUCT_SHIPPING_API_LEVEL := 34
+# PRODUCT_TARGET_VNDK_VERSION := 34
 
 # 순정 지문 (스푸핑용, ro.product.build.fingerprint 그대로)
 PRODUCT_BUILD_PROP_OVERRIDES += \

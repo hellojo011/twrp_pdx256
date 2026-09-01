@@ -15,9 +15,9 @@ TARGET_USES_UEFI := true
 
 # ro.product.cpu.abi=arm64-v8a, abilist32 이 비어 있음 -> 순수 64비트 기기
 TARGET_ARCH := arm64
-# SM8750 은 실제로 armv9.2 이지만, OrangeFox/TWRP 12.1 (Android 12.1 기반) 빌드
-# 시스템은 armv9-a 를 모릅니다. 리커버리 성능과는 무관하므로 armv8-a 로 둡니다.
-TARGET_ARCH_VARIANT := armv8-a
+# SM8750 은 armv9.2. android-14 Soong 의 archVariants 에 armv9-a 가 있는 것을
+# 확인했습니다 (armv9-2a 는 없음).
+TARGET_ARCH_VARIANT := armv9-a
 TARGET_CPU_ABI := arm64-v8a
 TARGET_CPU_VARIANT := generic
 TARGET_CPU_VARIANT_RUNTIME := cortex-a76
@@ -44,15 +44,20 @@ BOARD_KERNEL_CMDLINE :=
 #   kernel_addr=0x00008000  ramdisk_addr=0x01000000
 #   tags_addr=0x00000100    dtb_addr=0x01f00000
 
-# DTB 는 boot.img 가 아니라 vendor_boot 안에 있습니다 (13개 SoC DTB, 6062476 bytes)
+# DTB 는 boot.img 가 아니라 vendor_boot 안에 있습니다 (13개 SoC DTB, 6062476 bytes).
+# 우리는 recovery(램디스크 전용)만 빌드하므로 DTB 를 패키징할 일이 없습니다.
+# BOARD_PREBUILT_DTBIMAGE_DIR 은 BOARD_INCLUDE_DTB_IN_BOOTIMG := true 일 때만
+# 허용되므로(board_config.mk:816) 아예 지정하지 않습니다.
+# prebuilt/dtb.img 는 참고용으로 트리에 남아 있습니다.
 BOARD_INCLUDE_DTB_IN_BOOTIMG := false
-BOARD_PREBUILT_DTBIMAGE_DIR := $(DEVICE_PATH)/prebuilt
 
 # dtbo.img: 71개 오버레이. Sony 전용 fragment 가 들어있는 것은 index 43/44/45
 # ("Sun QRD SKU1 / SKU1 V8 / SKU2 V8") 와 56 ("SunP QRD HDK").
 # TWRP 는 dtbo 를 교체하지 않으므로 순정 dtbo 를 그대로 씁니다.
 BOARD_INCLUDE_RECOVERY_DTBO := false
-BOARD_PREBUILT_DTBOIMAGE := $(DEVICE_PATH)/prebuilt/dtbo.img
+# 순정 dtbo 를 그대로 쓰므로 빌드에서 dtbo.img 를 만들 필요가 없습니다.
+# prebuilt/dtbo.img 는 참고 및 재플래시용으로만 보관합니다.
+# BOARD_PREBUILT_DTBOIMAGE := $(DEVICE_PATH)/prebuilt/dtbo.img
 
 # --- Recovery ------------------------------------------------------------
 # 순정 recovery.img: header v4, kernel_size=0, ramdisk 만 19775596 bytes (LZ4 legacy)
@@ -82,6 +87,8 @@ BOARD_USES_METADATA_PARTITION := true
 # super.sin 의 LP 메타데이터(v10.2)에서 직접 읽은 실제 그룹 이름입니다.
 # ("qti_dynamic_partitions" 가 아님에 주의)
 BOARD_SUPER_PARTITION_GROUPS := somc_dynamic_partitions
+# system_dlkm 은 Android 13 부터 유효한 이름입니다. 실제 super 에도 존재합니다
+# (12.5MB). 12.1 에서는 거부돼서 뺐던 것을 복원.
 BOARD_SOMC_DYNAMIC_PARTITIONS_PARTITION_LIST :=     system system_ext product vendor odm vendor_dlkm system_dlkm
 # 기기 확인값: blockdev --getsize64 /dev/block/by-name/super = 19327352832 (18 GiB)
 BOARD_SUPER_PARTITION_SIZE := 19327352832
@@ -116,9 +123,11 @@ TW_INCLUDE_CRYPTO := true
 TW_INCLUDE_CRYPTO_FBE := true
 TW_INCLUDE_FBE_METADATA_DECRYPT := true
 TW_USE_FSCRYPT_POLICY := 2
-PLATFORM_SECURITY_PATCH := 2026-06-01
+# android-14 부터 PLATFORM_SECURITY_PATCH 를 직접 지정하면 빌드가 에러로 막습니다:
+#   "Do not set PLATFORM_SECURITY_PATCH directly. Use RELEASE_PLATFORM_SECURITY_PATCH."
+# PLATFORM_VERSION 도 RELEASE_PLATFORM_VERSION 에서 유도되므로 건드리지 않습니다.
+# (12.1 에서는 BoardConfig 에 두는 게 관례였지만 14 에서는 반대입니다)
 VENDOR_SECURITY_PATCH := 2026-06-01
-PLATFORM_VERSION := 15
 
 # --- TWRP ----------------------------------------------------------------
 # 기기 확인값: wm size = 1080x2340
