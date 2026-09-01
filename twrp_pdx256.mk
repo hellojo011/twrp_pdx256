@@ -7,8 +7,8 @@ LOCAL_PATH := device/sony/pdx256
 
 # 64비트 전용 기기 (abilist32 이 비어 있음)
 $(call inherit-product, $(SRC_TARGET_DIR)/product/core_64_bit.mk)
-# base.mk 가 아니라 embedded.mk. base.mk 는 리커버리에 불필요한 system 패키지를 잔뜩 끌어옵니다.
-$(call inherit-product, $(SRC_TARGET_DIR)/product/embedded.mk)
+# embedded.mk 는 Android 12.1 에서 삭제되었습니다. 이 트리에는 base.mk 만 존재합니다.
+$(call inherit-product, $(SRC_TARGET_DIR)/product/base.mk)
 $(call inherit-product, vendor/twrp/config/common.mk)
 
 PRODUCT_DEVICE := pdx256
