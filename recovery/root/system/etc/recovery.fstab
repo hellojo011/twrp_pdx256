@@ -1,0 +1,40 @@
+# TWRP fstab (v2) - Sony pdx256 (SM8750 / "sun")
+#
+# 베이스: 순정 recovery.img 의 /system/etc/recovery.fstab
+# 보강:   vendor_boot.img 의 first_stage_ramdisk/fstab.qcom
+#         (persist / metadata / SD / OTG / 이미지 파티션 항목)
+#
+#<src>                                   <mnt_point>        <type>  <mnt_flags/options>                <fs_mgr_flags>
+
+# --- Logical (super) 파티션 ------------------------------------------------
+system                                    /system            ext4    ro,barrier=1,discard               wait,slotselect,avb=vbmeta_system,logical,first_stage_mount
+system_ext                                /system_ext        ext4    ro,barrier=1,discard               wait,slotselect,avb=vbmeta_system,logical,first_stage_mount
+product                                   /product           ext4    ro,barrier=1,discard               wait,slotselect,avb=vbmeta_system,logical,first_stage_mount
+vendor                                    /vendor            ext4    ro,barrier=1,discard               wait,slotselect,avb,logical,first_stage_mount
+odm                                       /odm               ext4    ro,barrier=1,discard               wait,slotselect,avb,logical,first_stage_mount
+vendor_dlkm                               /vendor_dlkm       ext4    ro,barrier=1,discard               wait,slotselect,avb,logical,first_stage_mount
+system_dlkm                               /system_dlkm       ext4    ro,barrier=1,discard               wait,slotselect,avb,logical,first_stage_mount
+
+# --- Data / metadata -------------------------------------------------------
+# HW-wrapped FBE + metadata 암호화. TWRP 가 여기서 막히면 fastbootd 로 우회.
+/dev/block/bootdevice/by-name/metadata    /metadata          f2fs    noatime,nosuid,nodev,discard       wait,check,formattable,first_stage_mount;flags=display="Metadata";backup=0
+/dev/block/bootdevice/by-name/userdata    /data              f2fs    noatime,nosuid,nodev,discard,reserve_root=32768,resgid=1065,fsync_mode=nobarrier,inlinecrypt   latemount,wait,check,formattable,fileencryption=aes-256-xts:aes-256-cts:v2+inlinecrypt_optimized+wrappedkey_v0,keydirectory=/metadata/vold/metadata_encryption,metadata_encryption=aes-256-xts:wrappedkey_v0,quota,reservedsize=128M,sysfs_path=/sys/devices/platform/soc/1d84000.ufshc,checkpoint=fs
+
+# --- Vendor 전용 마운트 (fstab.qcom 에서 가져옴) ----------------------------
+/dev/block/bootdevice/by-name/persist     /mnt/vendor/persist ext4   noatime,nosuid,nodev,barrier=1,discard   wait,check;flags=display="Persist";backup=1
+/dev/block/bootdevice/by-name/modem       /vendor/firmware_mnt vfat  ro,shortname=lower,uid=1000,gid=1000,dmask=227,fmask=337   wait,slotselect;flags=display="Modem";backup=1
+/dev/block/bootdevice/by-name/dsp         /vendor/dsp        ext4    ro,nosuid,nodev,barrier=1          wait,slotselect;flags=display="DSP";backup=1
+/dev/block/bootdevice/by-name/bluetooth   /vendor/bt_firmware vfat   ro,shortname=lower,uid=1002,gid=3002,dmask=227,fmask=337   wait,slotselect;flags=display="BT firmware";backup=0
+
+# --- 외부 저장소 -----------------------------------------------------------
+/dev/block/mmcblk1p1                      /external_sd       vfat    nosuid,nodev                       wait;flags=display="MicroSD";storage;wipeingui;removable
+usb-otg                                   /usb_otg           vfat    nosuid,nodev                       wait;flags=display="USB OTG";storage;wipeingui;removable
+
+# --- 이미지 파티션 (백업/플래시용) -----------------------------------------
+/dev/block/bootdevice/by-name/boot        /boot              emmc    defaults                           defaults;flags=slotselect;display="Boot";backup=1;flashimg=1
+/dev/block/bootdevice/by-name/init_boot   /init_boot         emmc    defaults                           defaults;flags=slotselect;display="Init boot";backup=1;flashimg=1
+/dev/block/bootdevice/by-name/vendor_boot /vendor_boot       emmc    defaults                           defaults;flags=slotselect;display="Vendor boot";backup=1;flashimg=1
+/dev/block/bootdevice/by-name/recovery    /recovery          emmc    defaults                           defaults;flags=slotselect;display="Recovery";backup=1;flashimg=1
+/dev/block/bootdevice/by-name/dtbo        /dtbo              emmc    defaults                           defaults;flags=slotselect;display="DTBO";backup=1;flashimg=1
+/dev/block/bootdevice/by-name/vbmeta      /vbmeta            emmc    defaults                           defaults;flags=slotselect;display="vbmeta";backup=1;flashimg=1
+/dev/block/bootdevice/by-name/misc        /misc              emmc    defaults                           defaults;flags=display="Misc";backup=0

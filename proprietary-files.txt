@@ -1,0 +1,55 @@
+# pdx256 — TWRP /data 복호화용 vendor blob 목록
+#
+# 이 목록은 추측이 아니라 super.sin 에서 vendor_a 를 뽑아
+# keymint HAL 바이너리의 DT_NEEDED 를 재귀적으로 따라가 만든 폐포(closure)입니다.
+# libc/libdl/liblog/libm/libbinder_ndk/libvndksupport 는 TWRP 램디스크에 이미 있으므로 제외.
+#
+# 확인된 사실:
+#   - vintf 에 선언된 기본 HAL 은 android.hardware.security.keymint v3 IKeyMintDevice/default
+#     -> /vendor/bin/hw/android.hardware.security.keymint-service-qti  (TEE/TZ 경로)
+#   - SPU 쪽(keymint-service-spu-qti)은 vintf 선언이 없는 StrongBox 인스턴스라 불필요
+#   - keymint 는 qseecomd 가 먼저 떠 있어야 동작 (TA 로드)
+#   - TA 이미지는 vendor 안이 아니라 modem 파티션에 있고
+#     /vendor/firmware_mnt 로 마운트됩니다 -> recovery.fstab 항목 필수
+
+# --- HAL 실행 파일 -------------------------------------------------------
+vendor/bin/hw/android.hardware.security.keymint-service-qti
+vendor/bin/qseecomd
+
+# --- keymint / QSEE 코어 -------------------------------------------------
+vendor/lib64/libqtikeymint.so
+vendor/lib64/libkeymaster_messages.so
+vendor/lib64/libkeymasterdeviceutils.so
+vendor/lib64/libkeymasterutils.so
+vendor/lib64/libQSEEComAPI.so
+vendor/lib64/libminkdescriptor.so
+vendor/lib64/libqcbor.so
+vendor/lib64/libseclog.so
+vendor/lib64/libdrmfs.so
+vendor/lib64/libdiag.so
+
+# --- AIDL/HIDL 인터페이스 ------------------------------------------------
+vendor/lib64/android.hardware.security.keymint-V3-ndk.so
+vendor/lib64/android.hardware.security.rkp-V3-ndk.so
+vendor/lib64/android.hardware.security.secureclock-V1-ndk.so
+vendor/lib64/android.hardware.security.sharedsecret-V1-ndk.so
+vendor/lib64/android.hardware.keymaster@3.0.so
+vendor/lib64/android.hardware.keymaster@4.0.so
+vendor/lib64/android.hardware.keymaster@4.1.so
+
+# --- 공용 런타임 (vendor 쪽 사본) ----------------------------------------
+vendor/lib64/libbase.so
+vendor/lib64/libc++.so
+vendor/lib64/libcrypto.so
+vendor/lib64/libcutils.so
+vendor/lib64/libutils.so
+vendor/lib64/libhidlbase.so
+vendor/lib64/libhardware.so
+vendor/lib64/libion.so
+vendor/lib64/libdmabufheap.so
+vendor/lib64/libxml2.so
+
+# --- 설정 파일 -----------------------------------------------------------
+vendor/etc/init/android.hardware.security.keymint-service-qti.rc
+vendor/etc/init/qseecomd.rc
+vendor/etc/vintf/manifest/android.hardware.security.keymint-service-qti.xml

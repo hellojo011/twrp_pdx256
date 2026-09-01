@@ -1,0 +1,25 @@
+# TWRP 에서 keymint HAL 을 띄워 /data 를 복호화하기 위한 init 스크립트.
+# 순정 vendor 의 qseecomd.rc + keymint-service-qti.rc 를 리커버리용으로 옮긴 것.
+#
+# 순서가 중요합니다: qseecomd 가 먼저 떠서 TA 를 로드해야 keymint 가 붙습니다.
+# TA 이미지는 modem 파티션에 있으므로 /vendor/firmware_mnt 가 먼저 마운트돼야 합니다.
+
+on init
+    mkdir /mnt/vendor/persist 0771 root system
+    start vendor.qseecomd
+
+on property:init.svc.vendor.qseecomd=running
+    start vendor.keymint-qti
+
+service vendor.qseecomd /vendor/bin/qseecomd
+    socket notify-topology stream 660 system drmrpc
+    class core
+    user root
+    group root drmrpc
+    seclabel u:r:qseecomd:s0
+
+service vendor.keymint-qti /vendor/bin/hw/android.hardware.security.keymint-service-qti
+    class early_hal
+    user system
+    group system drmrpc
+    seclabel u:r:vendor_keymint:s0
