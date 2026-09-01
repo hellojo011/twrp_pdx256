@@ -1,13 +1,11 @@
 <!--
-    이식한 HIDL gatekeeper HAL(android.hardware.gatekeeper@1.0-service-qti)을
-    servicemanager 에 선언합니다. 선언이 없으면 등록이 거부되어
-    init.recovery.qcom_decrypt.fbe.rc 의 gatekeeper-1-0-qti 가 떠도 무의미합니다.
-    base manifest.xml 은 비워두고 fragment 로만 선언하는 구조를 유지합니다.
+    pdx256 자체 gatekeeper 는 AIDL (android.hardware.gatekeeper-service-qti) 입니다.
+    pineapple 변형이 쓰던 HIDL @1.0::IGatekeeper 선언과 다릅니다.
 -->
 <manifest version="1.0" type="device">
-    <hal format="hidl">
+    <hal format="aidl">
         <name>android.hardware.gatekeeper</name>
-        <transport>hwbinder</transport>
-        <fqname>@1.0::IGatekeeper/default</fqname>
+        <version>1</version>
+        <fqname>IGatekeeper/default</fqname>
     </hal>
 </manifest>

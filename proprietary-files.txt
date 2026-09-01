@@ -1,57 +1,64 @@
-# pdx256 리커버리 복호화용 blob
+# pdx256 리커버리 복호화용 blob -- native 변형
 #
-# 출처가 pdx256 순정이 아니라 pineapple(SM8650) TWRP 입니다. 이유:
+# 이 브랜치(native-blobs)는 pdx256 자신의 vendor blob 을 씁니다.
+# master 의 pineapple(SM8650) 세트와 비교하기 위한 것입니다.
 #
-# pdx256 자신의 vendor blob 으로는 TZ 핸드셰이크가 거부됩니다:
-#   SmcInvoke_MinkDescriptor: Failed to open invoke driver, errno = 13
-#   SmcInvoke_TZCom: TZCom_getRootEnvObject ret=1
-#   ListenerMngr: Error -1 getting clientEnv
-# 파일 권한도 SELinux 도 아닙니다 (셸에서는 /dev/smcinvoke 가 정상 오픈되고
-# setenforce 0 으로도 동일하게 실패). 반면 pineapple TWRP 의 더 오래된 blob 은
-# 같은 /dev/smcinvoke 와 같은 리스너 10개를 쓰면서 이 기기에서 실제로 동작합니다.
-# QTI TZ 인터페이스가 기종 간 호환되는 덕분입니다.
+# 진짜 병목은 blob 이 아니라 /dev/smcinvoke 권한이었습니다 (master 참고).
+# 그 수정이 들어간 뒤에는 양쪽 다 TZ 핸드셰이크가 가능해야 합니다.
+# native 쪽이 아키텍처상 더 맞습니다 -- 이 기기의 TZ 앱과 같은 세대라
+# wrappedkey_v0 키 처리에서 어긋날 여지가 적습니다.
 #
-# 이 파일들은 recovery/root/system/{bin,lib64} 에 직접 커밋되어 있습니다.
-# TWRP 램디스크 조립이 device tree 의 recovery/root 를 통째로 복사하므로
-# PRODUCT_COPY_FILES 규칙이 필요 없고, ELF prebuilt 검사도 우회합니다.
+# 위치가 /system 이 아니라 /vendor 인 이유:
+# native 세트에는 vendor 버전 libc++(1083168, __libcpp_verbose_abort 보유),
+# libbase, libcrypto, libhidlbase 등이 포함됩니다. 이걸 /system/lib64 에 두면
+# Android 14 로 빌드된 TWRP 자체 바이너리를 깨뜨립니다. /vendor/lib64 에 두면
+# rc 의 LD_LIBRARY_PATH(/vendor/lib64 우선)가 vendor 프로세스에만 적용됩니다.
 #
-# 위치가 /vendor 가 아니라 /system 인 것도 의도적입니다. 리커버리 링커는
-# /system/${LIB} 만 검색하고, init.recovery.qcom_decrypt.rc 의 LD_LIBRARY_PATH 는
-# /vendor/lib64 를 먼저 봅니다 -- pdx256 의 옛 blob 을 /vendor 에 남겨두면
-# pineapple 것을 가려버리므로 전부 제거했습니다.
+# gatekeeper 도 다릅니다: pineapple 은 HIDL @1.0, pdx256 은 AIDL 입니다.
 
-system/bin/android.hardware.gatekeeper@1.0-service-qti
-system/bin/android.hardware.security.keymint-service-qti
-system/bin/qseecomd
-system/lib64/hw/android.hardware.gatekeeper@1.0-impl-qti.so
-system/lib64/hw/libqtigatekeeper.so
-system/lib64/libGPTEE_vendor.so
-system/lib64/libGPreqcancel.so
-system/lib64/libGPreqcancel_svc.so
-system/lib64/libQSEEComAPI.so
-system/lib64/libdiag.so
-system/lib64/libdisplayconfig.qti.so
-system/lib64/libdmabufheap.so
-system/lib64/libdrm.so
-system/lib64/libdrmfs.so
-system/lib64/libdrmtime.so
-system/lib64/libdrmutils.so
-system/lib64/libgpt.so
-system/lib64/libion.so
-system/lib64/libjc_keymint_nxp.so
-system/lib64/libjc_keymint_transport_nxp.so
-system/lib64/libkeymasterdeviceutils.so
-system/lib64/libkeymasterutils.so
-system/lib64/libminkdescriptor.so
-system/lib64/libops.so
-system/lib64/libqcbor.so
-system/lib64/libqisl.so
-system/lib64/libqtigatekeeper.so
-system/lib64/libqtikeymaster4.so
-system/lib64/libqtikeymint.so
-system/lib64/librpmb.so
-system/lib64/libspl.so
-system/lib64/libssd.so
-system/lib64/libtime_genoff.so
-system/lib64/vendor.display.config@1.0.so
-system/lib64/vendor.display.config@2.0.so
+vendor/bin/hw/android.hardware.gatekeeper-service-qti
+vendor/bin/hw/android.hardware.security.keymint-service-qti
+vendor/bin/qseecomd
+vendor/lib64/android.hardware.common-V2-ndk.so
+vendor/lib64/android.hardware.gatekeeper-V1-ndk.so
+vendor/lib64/android.hardware.keymaster@3.0.so
+vendor/lib64/android.hardware.keymaster@4.0.so
+vendor/lib64/android.hardware.keymaster@4.1.so
+vendor/lib64/android.hardware.security.keymint-V3-ndk.so
+vendor/lib64/android.hardware.security.rkp-V3-ndk.so
+vendor/lib64/android.hardware.security.secureclock-V1-ndk.so
+vendor/lib64/android.hardware.security.sharedsecret-V1-ndk.so
+vendor/lib64/hw/libqtigatekeeper.so
+vendor/lib64/libGPreqcancel.so
+vendor/lib64/libGPreqcancel_svc.so
+vendor/lib64/libQSEEComAPI.so
+vendor/lib64/libbase.so
+vendor/lib64/libc++.so
+vendor/lib64/libcrypto.so
+vendor/lib64/libcutils.so
+vendor/lib64/libdiag.so
+vendor/lib64/libdmabufheap.so
+vendor/lib64/libdrm.so
+vendor/lib64/libdrmfs.so
+vendor/lib64/libdrmtime.so
+vendor/lib64/libgatekeeper.so
+vendor/lib64/libgpt.so
+vendor/lib64/libhardware.so
+vendor/lib64/libhidlbase.so
+vendor/lib64/libion.so
+vendor/lib64/libkeymaster_messages.so
+vendor/lib64/libkeymasterdeviceutils.so
+vendor/lib64/libkeymasterutils.so
+vendor/lib64/libminkdescriptor.so
+vendor/lib64/libops.so
+vendor/lib64/libqcbor.so
+vendor/lib64/libqisl.so
+vendor/lib64/libqtikeymint.so
+vendor/lib64/librpmb.so
+vendor/lib64/libseclog.so
+vendor/lib64/libspl.so
+vendor/lib64/libssd.so
+vendor/lib64/libtime_genoff.so
+vendor/lib64/libutils.so
+vendor/lib64/libxml2.so
+vendor/lib64/vendor.qti.hardware.display.config-V7-ndk.so
