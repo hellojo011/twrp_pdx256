@@ -179,8 +179,33 @@ TARGET_USES_LOGD := true
 # base manifest 를 비우고 fragment 만 남기도록 고쳤으므로 다시 켭니다.
 # 그래도 splash 에서 멈추면 crypto 를 끈 이미지로 되돌리면 됩니다
 # (out/recovery-crypto-off.img).
-TW_INCLUDE_CRYPTO := true
-TW_INCLUDE_CRYPTO_FBE := true
+# 암호화(/data 복호화)는 기본으로 꺼둡니다. 켜면 메뉴가 아예 뜨지 않습니다.
+#
+# 여기까지 확인된 사슬:
+#   qseecomd 가 리스너 10개를 모두 로드하는 데까지는 성공하지만,
+#   TZ 핸드셰이크에서 멈춥니다:
+#     SmcInvoke_MinkDescriptor: Failed to open invoke driver, errno = 13
+#     SmcInvoke_TZCom: TZCom_getRootEnvObject ret=1
+#     ListenerMngr: Error -1 getting clientEnv
+#   -> keymint 가 servicemanager 에 등록되지 못하고
+#   -> keystore2 는 keymint 를 무한 대기하며
+#   -> TWRP 는 fscrypt_mount_metadata_encrypted() 에서 영원히 멈춥니다.
+#
+# errno 13 은 파일 권한이나 SELinux 문제가 아닙니다. 확인한 것:
+#   - 셸에서 /dev/smcinvoke 는 O_RDONLY/O_WRONLY/O_RDWR 모두 정상 오픈
+#   - setenforce 0 (전역 permissive) 로도 동일하게 실패
+#   - 해당 노드를 점유 중인 다른 프로세스 없음
+#   - 커널은 부팅 시 QTEE 와 정상 통신 (root object invocation returned 0)
+#
+# 참고: Sony 순정 recovery.img 에는 qseecomd / keymint / keystore2 / vold 가
+# 아예 없습니다. 순정 리커버리도 /data 를 복호화하지 않고 wipe 만 합니다.
+# 즉 이 TZ 클라이언트 스택은 이 기기의 리커버리 환경에서 동작한 전례가 없습니다.
+#
+# 되살리려면 아래 세 줄의 주석을 풀면 됩니다. blob 과 VINTF, 리스너 라이브러리는
+# 모두 그대로 남겨두었으므로 TZ 문제만 풀리면 바로 이어서 시도할 수 있습니다.
+# TW_INCLUDE_CRYPTO := true
+# TW_INCLUDE_CRYPTO_FBE := true
+# TW_USE_FSCRYPT_POLICY := 2
 # 이 플래그를 켜면 partitionmanager.cpp:688 의
 #   android::vold::fscrypt_mount_metadata_encrypted(...)
 # 가 실행되는데, 이 호출은 keystore2 -> keymint 를 binder 로 부르고
@@ -195,7 +220,6 @@ TW_INCLUDE_CRYPTO_FBE := true
 # 복호화를 다시 시도하려면 이 줄을 true 로 되돌리면 됩니다. 다만 그 전에
 # keystore2 가 리커버리에서 살아있게 만드는 것이 선행되어야 합니다.
 # TW_INCLUDE_FBE_METADATA_DECRYPT := true   (TW_INCLUDE_CRYPTO 와 함께 되살릴 것)
-TW_USE_FSCRYPT_POLICY := 2
 # android-14 부터 PLATFORM_SECURITY_PATCH 를 직접 지정하면 빌드가 에러로 막습니다:
 #   "Do not set PLATFORM_SECURITY_PATCH directly. Use RELEASE_PLATFORM_SECURITY_PATCH."
 # PLATFORM_VERSION 도 RELEASE_PLATFORM_VERSION 에서 유도되므로 건드리지 않습니다.
