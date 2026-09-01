@@ -76,7 +76,9 @@ TARGET_RECOVERY_FSTAB := $(DEVICE_PATH)/recovery/root/system/etc/recovery.fstab
 AB_OTA_UPDATER := true
 AB_OTA_PARTITIONS += boot dtbo init_boot odm recovery system_dlkm vbmeta vendor vendor_boot vendor_dlkm
 BOARD_USES_METADATA_PARTITION := true
-PRODUCT_USE_DYNAMIC_PARTITIONS := true
+# PRODUCT_USE_DYNAMIC_PARTITIONS 는 제품 변수라 BoardConfig 에서 못 씁니다.
+# (board_config.mk 는 제품 설정 이후에 실행돼 그 시점엔 readonly)
+# -> twrp_pdx256.mk 로 옮겼습니다.
 # super.sin 의 LP 메타데이터(v10.2)에서 직접 읽은 실제 그룹 이름입니다.
 # ("qti_dynamic_partitions" 가 아님에 주의)
 BOARD_SUPER_PARTITION_GROUPS := somc_dynamic_partitions

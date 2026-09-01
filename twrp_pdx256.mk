@@ -11,6 +11,9 @@ $(call inherit-product, $(SRC_TARGET_DIR)/product/core_64_bit.mk)
 $(call inherit-product, $(SRC_TARGET_DIR)/product/base.mk)
 $(call inherit-product, vendor/twrp/config/common.mk)
 
+# 동적 파티션 (BoardConfig 가 아니라 여기에 있어야 합니다)
+PRODUCT_USE_DYNAMIC_PARTITIONS := true
+
 PRODUCT_DEVICE := pdx256
 PRODUCT_NAME := twrp_pdx256
 PRODUCT_BRAND := Sony
