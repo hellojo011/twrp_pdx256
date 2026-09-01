@@ -54,7 +54,10 @@ on fs
 #    (기기에서 이 값만 세워주니 곧바로 4개 인스턴스가 등록되는 것을 확인)
 #
 # 2) ro.build.version.security_patch
-#    keymaster 키는 OS 패치 레벨에 바인딩됩니다. 리커버리 값은 빌드 ID
+#    keymaster 패치 레벨/OS 버전 교정. 자세한 근거는 fix_patchlevel.sh 주석 참고.
+#    (요약: 실제 값과 맞추는 대신 2099-12-31 / 16.1.0 으로 밀어올립니다 --
+#     이 기기에서 복호화에 성공하는 TWRP 이미지가 쓰는 값입니다)
+#    구 주석: 리커버리 값은 빌드 ID
 #    (AP2A.240905.003)에서 온 2024-09-05 인데 기기 실제 값은 2026-06-01 이라
 #    키 업그레이드가 필요해지고 거기서 실패합니다:
 #      keystore2: utils.rs:315: Upgrade failed.
@@ -70,7 +73,7 @@ on init
     setprop vendor.gatekeeper.is_security_level_spu 0
     start fix_patchlevel
 
-service fix_patchlevel /system/bin/resetprop ro.build.version.security_patch 2026-06-01
+service fix_patchlevel /system/bin/fix_patchlevel.sh
     user root
     group root
     disabled
