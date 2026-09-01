@@ -1,0 +1,10 @@
+<!--
+    framework 쪽 베이스 매니페스트. 없으면 servicemanager 가
+      getFrameworkHalManifest: -2 VINTF parse error:
+      Cannot read /system/manifest.xml: No such file or directory
+      NULL VINTF MANIFEST!: framework
+    로 실패하고, manifest/android.system.keystore2-service.xml fragment 가
+    병합되지 못해 IKeystoreService/default 가 선언되지 않습니다.
+    vendor 쪽과 같은 이유로 내용은 비워 둡니다.
+-->
+<manifest version="8.0" type="framework" />

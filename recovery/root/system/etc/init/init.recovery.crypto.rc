@@ -28,6 +28,34 @@ on init
     wait /dev/block/by-name/modem${ro.boot.slot_suffix} 10
     mount vfat /dev/block/by-name/modem${ro.boot.slot_suffix} /vendor/firmware_mnt ro
 
+
+    # -- cpuset ------------------------------------------------------------
+    # /dev/cpuset 는 마운트돼 있지만 하위 그룹이 하나도 없습니다. libprocessgroup
+    # 의 task_profiles.json 이 이 경로들을 참조하므로 미리 만들어 둡니다.
+    # (task_profiles.json 자체가 없어서 logd 가 죽던 문제는 램디스크에 파일을
+    #  넣어 해결했습니다: system/etc/task_profiles.json)
+    #   logd: libprocessgroup: Failed to find SCHED_SP_BACKGROUND task profile
+    #   logd: failed to set background scheduling policy
+    mkdir /dev/cpuset/foreground
+    mkdir /dev/cpuset/background
+    mkdir /dev/cpuset/system-background
+    mkdir /dev/cpuset/top-app
+    mkdir /dev/cpuset/restricted
+    copy /dev/cpuset/cpus /dev/cpuset/foreground/cpus
+    copy /dev/cpuset/mems /dev/cpuset/foreground/mems
+    copy /dev/cpuset/cpus /dev/cpuset/background/cpus
+    copy /dev/cpuset/mems /dev/cpuset/background/mems
+    copy /dev/cpuset/cpus /dev/cpuset/system-background/cpus
+    copy /dev/cpuset/mems /dev/cpuset/system-background/mems
+    copy /dev/cpuset/cpus /dev/cpuset/top-app/cpus
+    copy /dev/cpuset/mems /dev/cpuset/top-app/mems
+    copy /dev/cpuset/cpus /dev/cpuset/restricted/cpus
+    copy /dev/cpuset/mems /dev/cpuset/restricted/mems
+
+    # persist 는 TZ 리스너(libdrmfs 등)가 쓰는 저장소입니다.
+    wait /dev/block/by-name/persist 10
+    mount ext4 /dev/block/by-name/persist /mnt/vendor/persist
+
     start vendor.qseecomd
     start vendor.keymint-qti
 
