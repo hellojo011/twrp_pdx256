@@ -122,6 +122,15 @@ BOARD_AVB_MAKE_VBMETA_IMAGE_ARGS += --flags 3
 #   keydirectory=/metadata/vold/metadata_encryption
 # 하드웨어 래핑 키(HW-wrapped FBE) + ICE 입니다.
 BOARD_USES_QCOM_HARDWARE := true
+
+# blobs.mk 는 vendor blob 32개를 PRODUCT_COPY_FILES 로 넣는데, android-14 는
+# ELF 파일을 그렇게 복사하는 것을 기본적으로 막습니다:
+#   "found ELF prebuilt in PRODUCT_COPY_FILES,
+#    use cc_prebuilt_binary / cc_prebuilt_library_shared instead."
+# 정석은 Android.bp 에 cc_prebuilt_* 모듈 29개를 선언하는 것이지만,
+# build/make 가 공식 탈출구를 제공합니다 (Changes.md:323).
+# 주의: 이름 그대로 "broken" 취급이라 향후 버전에서 사라질 수 있습니다.
+BUILD_BROKEN_ELF_PREBUILT_PRODUCT_COPY_FILES := true
 # keymint blob 은 빌드 모듈이 아니라 prebuilt 파일이므로 blobs.mk 의
 # PRODUCT_COPY_FILES 로 넣습니다. TARGET_RECOVERY_DEVICE_MODULES 에 적으면
 # "module not found" 로 빌드가 실패합니다.
