@@ -2,9 +2,13 @@
 # twrp_pdx256.mk - Sony pdx256 (SM8750 / "sun")
 #
 
+# 제품 makefile 에서는 LOCAL_PATH 가 자동으로 정의되지 않습니다. 반드시 직접 지정.
+LOCAL_PATH := device/sony/pdx256
+
 # 64비트 전용 기기 (abilist32 이 비어 있음)
 $(call inherit-product, $(SRC_TARGET_DIR)/product/core_64_bit.mk)
-$(call inherit-product, $(SRC_TARGET_DIR)/product/base.mk)
+# base.mk 가 아니라 embedded.mk. base.mk 는 리커버리에 불필요한 system 패키지를 잔뜩 끌어옵니다.
+$(call inherit-product, $(SRC_TARGET_DIR)/product/embedded.mk)
 $(call inherit-product, vendor/twrp/config/common.mk)
 
 PRODUCT_DEVICE := pdx256
@@ -14,8 +18,11 @@ PRODUCT_MODEL := Pdx256
 PRODUCT_MANUFACTURER := Sony
 PRODUCT_RELEASE_NAME := pdx256
 
-PRODUCT_SHIPPING_API_LEVEL := 35
-PRODUCT_TARGET_VNDK_VERSION := 35
+# 기기는 SDK 35 지만 OrangeFox/TWRP 12.1 트리(Android 12.1 기반)에는
+# VNDK 35 스냅샷이 없습니다. 여기에 35 를 넣으면 sync 직후 빌드가 깨집니다.
+# 리커버리는 VTS 대상이 아니므로 지정하지 않는 편이 안전합니다.
+# PRODUCT_SHIPPING_API_LEVEL := 32
+# PRODUCT_TARGET_VNDK_VERSION := 32
 
 # 순정 지문 (스푸핑용, ro.product.build.fingerprint 그대로)
 PRODUCT_BUILD_PROP_OVERRIDES += \

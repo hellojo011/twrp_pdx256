@@ -15,7 +15,9 @@ TARGET_USES_UEFI := true
 
 # ro.product.cpu.abi=arm64-v8a, abilist32 이 비어 있음 -> 순수 64비트 기기
 TARGET_ARCH := arm64
-TARGET_ARCH_VARIANT := armv9-a
+# SM8750 은 실제로 armv9.2 이지만, OrangeFox/TWRP 12.1 (Android 12.1 기반) 빌드
+# 시스템은 armv9-a 를 모릅니다. 리커버리 성능과는 무관하므로 armv8-a 로 둡니다.
+TARGET_ARCH_VARIANT := armv8-a
 TARGET_CPU_ABI := arm64-v8a
 TARGET_CPU_VARIANT := generic
 TARGET_CPU_VARIANT_RUNTIME := cortex-a76
@@ -105,8 +107,9 @@ BOARD_AVB_MAKE_VBMETA_IMAGE_ARGS += --flags 3
 #   keydirectory=/metadata/vold/metadata_encryption
 # 하드웨어 래핑 키(HW-wrapped FBE) + ICE 입니다.
 BOARD_USES_QCOM_HARDWARE := true
-# keymint HAL 을 리커버리에서 띄우기 위한 blob (proprietary-files.txt 참고)
-TARGET_RECOVERY_DEVICE_MODULES := libqtikeymint
+# keymint blob 은 빌드 모듈이 아니라 prebuilt 파일이므로 blobs.mk 의
+# PRODUCT_COPY_FILES 로 넣습니다. TARGET_RECOVERY_DEVICE_MODULES 에 적으면
+# "module not found" 로 빌드가 실패합니다.
 TW_INCLUDE_CRYPTO := true
 TW_INCLUDE_CRYPTO_FBE := true
 TW_INCLUDE_FBE_METADATA_DECRYPT := true
