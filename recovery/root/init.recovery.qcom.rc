@@ -44,3 +44,38 @@ on property:ro.boot.usbcontroller=*
 on fs
     wait /dev/block/platform/soc/${ro.boot.bootdevice}
     symlink /dev/block/platform/soc/${ro.boot.bootdevice} /dev/block/bootdevice
+
+# --- 복호화에 필요한 속성 교정 -------------------------------------------
+#
+# 1) vendor.gatekeeper.is_security_level_spu
+#    순정의 /vendor/bin/init.qti.keymaster.sh 가 soc_id(618/639 = SM8750)를 보고
+#    이 값을 0 으로 세웁니다. 리커버리엔 그 스크립트가 없어서 미설정으로 남고,
+#    그러면 keymint HAL 이 초기화 후 등록하지 않고 futex 에서 멈춥니다.
+#    (기기에서 이 값만 세워주니 곧바로 4개 인스턴스가 등록되는 것을 확인)
+#
+# 2) ro.build.version.security_patch
+#    keymaster 패치 레벨/OS 버전 교정. 자세한 근거는 fix_patchlevel.sh 주석 참고.
+#    (요약: 실제 값과 맞추는 대신 2099-12-31 / 16.1.0 으로 밀어올립니다 --
+#     이 기기에서 복호화에 성공하는 TWRP 이미지가 쓰는 값입니다)
+#    구 주석: 리커버리 값은 빌드 ID
+#    (AP2A.240905.003)에서 온 2024-09-05 인데 기기 실제 값은 2026-06-01 이라
+#    키 업그레이드가 필요해지고 거기서 실패합니다:
+#      keystore2: utils.rs:315: Upgrade failed.
+#      keystore2: Error::Km(r#INCOMPATIBLE_BLOCK_MODE)
+#      recovery: keystore2 Keystore createOperation returned service specific error: -8
+#    교정 후에는 shared secret negotiation 이 성공하고 keystore2 가 등록됩니다.
+#
+#    prepdecrypt.sh 의 SETPATCH 경로는 이 기기에서 쓸 수 없습니다 -- 동적
+#    파티션이라 /dev/block/by-name/system 이 존재하지 않아 마운트가 실패합니다.
+#    ro. 속성은 한 번 설정되면 setprop 으로 못 바꾸므로 resetprop 을 씁니다
+#    (TW_INCLUDE_RESETPROP := true).
+on init
+    setprop vendor.gatekeeper.is_security_level_spu 0
+    start fix_patchlevel
+
+service fix_patchlevel /system/bin/fix_patchlevel.sh
+    user root
+    group root
+    disabled
+    oneshot
+    seclabel u:r:recovery:s0
