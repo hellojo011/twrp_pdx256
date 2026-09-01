@@ -159,7 +159,20 @@ TARGET_USES_LOGD := true
 # "module not found" 로 빌드가 실패합니다.
 TW_INCLUDE_CRYPTO := true
 TW_INCLUDE_CRYPTO_FBE := true
-TW_INCLUDE_FBE_METADATA_DECRYPT := true
+# 이 플래그를 켜면 partitionmanager.cpp:688 의
+#   android::vold::fscrypt_mount_metadata_encrypted(...)
+# 가 실행되는데, 이 호출은 keystore2 -> keymint 를 binder 로 부르고
+# 응답이 없으면 영원히 대기합니다. keystore2 가 리커버리에서 죽는 상태라
+# TWRP 가 splash 에서 멈추고 메뉴가 아예 뜨지 않습니다.
+#
+# 끄면 #else 분기가 로그 한 줄만 남기고 진행하므로 메뉴가 정상적으로 뜹니다.
+#   LOGERR("Metadata FBE decrypt support not present in this build")
+#
+# /data 는 여전히 못 읽지만, 그것 말고 리커버리가 할 수 있는 일
+# (플래싱, boot/vendor/vbmeta 백업, fastbootd, adb sideload) 은 전부 됩니다.
+# 복호화를 다시 시도하려면 이 줄을 true 로 되돌리면 됩니다. 다만 그 전에
+# keystore2 가 리커버리에서 살아있게 만드는 것이 선행되어야 합니다.
+TW_INCLUDE_FBE_METADATA_DECRYPT := false
 TW_USE_FSCRYPT_POLICY := 2
 # android-14 부터 PLATFORM_SECURITY_PATCH 를 직접 지정하면 빌드가 에러로 막습니다:
 #   "Do not set PLATFORM_SECURITY_PATCH directly. Use RELEASE_PLATFORM_SECURITY_PATCH."
