@@ -53,3 +53,8 @@ vendor/lib64/libxml2.so
 vendor/etc/init/android.hardware.security.keymint-service-qti.rc
 vendor/etc/init/qseecomd.rc
 vendor/etc/vintf/manifest/android.hardware.security.keymint-service-qti.xml
+
+# --- vintf (직접 작성, 추출본 아님) ------------------------------------
+# vendor/etc/vintf/manifest_sun.xml 은 device tree 에 직접 넣어두었습니다.
+# TWRP 가 keymint 버전을 판별할 때 읽는 파일이며, 순정 파일을 그대로 쓰면
+# 우리가 넣지 않은 strongbox HAL 을 선언하게 됩니다.

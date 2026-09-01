@@ -1,0 +1,39 @@
+<!--
+    TWRP 는 리커버리에서 keymaster/keymint 버전을 정할 때
+    /vendor/etc/vintf/manifest_<ro.board.platform>.xml 을 읽습니다.
+    이 파일이 없으면 keymaster 4.x 로 폴백하고, 그러면 복호화가 실패합니다:
+      I:/vendor/etc/vintf/manifest_sun.xml not found. Using default path
+      I:Keymaster_Ver::Using keymaster version '4.x' for decryption
+
+    순정 manifest_sun.xml 을 그대로 쓰지 않는 이유: 순정 파일은 keymint 를
+    strongbox 인스턴스로만 선언하는데, 그건 SPU HAL
+    (keymint-service-spu-qti) 이 제공합니다. 우리는 그 HAL 을 넣지 않으므로
+    선언하면 거짓말이 됩니다.
+
+    여기 적은 것은 실제로 램디스크에 들어있는 HAL 뿐입니다 --
+    vendor/etc/vintf/manifest/android.hardware.security.keymint-service-qti.xml
+    과 같은 내용의 default 인스턴스들.
+-->
+<manifest version="8.0" type="device" target-level="202404">
+    <hal format="aidl">
+        <name>android.hardware.security.keymint</name>
+        <version>3</version>
+        <fqname>IKeyMintDevice/default</fqname>
+    </hal>
+    <hal format="aidl">
+        <name>android.hardware.security.keymint</name>
+        <version>3</version>
+        <fqname>IRemotelyProvisionedComponent/default</fqname>
+    </hal>
+    <hal format="aidl">
+        <name>android.hardware.security.secureclock</name>
+        <fqname>ISecureClock/default</fqname>
+    </hal>
+    <hal format="aidl">
+        <name>android.hardware.security.sharedsecret</name>
+        <fqname>ISharedSecret/default</fqname>
+    </hal>
+    <sepolicy>
+        <version>202404</version>
+    </sepolicy>
+</manifest>

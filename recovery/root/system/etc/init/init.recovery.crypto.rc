@@ -1,10 +1,18 @@
 # TWRP 에서 keymint HAL 을 띄워 /data 를 복호화하기 위한 init 스크립트.
-# 순정 vendor 의 qseecomd.rc + keymint-service-qti.rc 를 리커버리용으로 옮긴 것.
 #
 # 순서가 중요합니다: qseecomd 가 먼저 떠서 TA 를 로드해야 keymint 가 붙습니다.
-# TA 이미지는 modem 파티션에 있으므로 /vendor/firmware_mnt 가 먼저 마운트돼야 합니다.
+# TA 이미지는 modem 파티션에 있으므로 /vendor/firmware_mnt 가 필요합니다.
 
 on init
+    # 리커버리의 링커 설정(/system/etc/ld.config.txt)은
+    #   namespace.default.search.paths = /system/${LIB}
+    # 뿐이라 /vendor/lib64 를 보지 않습니다. 그래서 vendor 바이너리가
+    # TWRP 의 libc++.so(754KB)를 물고 이렇게 죽습니다:
+    #   cannot locate symbol "_ZNSt3__122__libcpp_verbose_abortEPKcz"
+    # 순정 libc++.so(1083KB)에만 있는 심볼입니다. 아래 setenv 로 각 서비스가
+    # /vendor/lib64 를 먼저 보게 합니다 (namespace 가 isolated=false 라 동작).
+    mkdir /vendor/firmware_mnt 0771 root system
+    mkdir /mnt/vendor 0771 root system
     mkdir /mnt/vendor/persist 0771 root system
     start vendor.qseecomd
 
@@ -16,10 +24,12 @@ service vendor.qseecomd /vendor/bin/qseecomd
     class core
     user root
     group root drmrpc
+    setenv LD_LIBRARY_PATH /vendor/lib64:/system/lib64
     seclabel u:r:qseecomd:s0
 
 service vendor.keymint-qti /vendor/bin/hw/android.hardware.security.keymint-service-qti
     class early_hal
     user system
     group system drmrpc
+    setenv LD_LIBRARY_PATH /vendor/lib64:/system/lib64
     seclabel u:r:vendor_keymint:s0
