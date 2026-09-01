@@ -179,7 +179,7 @@ TARGET_USES_LOGD := true
 # base manifest 를 비우고 fragment 만 남기도록 고쳤으므로 다시 켭니다.
 # 그래도 splash 에서 멈추면 crypto 를 끈 이미지로 되돌리면 됩니다
 # (out/recovery-crypto-off.img).
-# 암호화(/data 복호화)는 기본으로 꺼둡니다. 켜면 메뉴가 아예 뜨지 않습니다.
+# 암호화 -- 동작이 확인된 pineapple TWRP 의 방식으로 다시 켭니다.
 #
 # 여기까지 확인된 사슬:
 #   qseecomd 가 리스너 10개를 모두 로드하는 데까지는 성공하지만,
@@ -203,9 +203,9 @@ TARGET_USES_LOGD := true
 #
 # 되살리려면 아래 세 줄의 주석을 풀면 됩니다. blob 과 VINTF, 리스너 라이브러리는
 # 모두 그대로 남겨두었으므로 TZ 문제만 풀리면 바로 이어서 시도할 수 있습니다.
-# TW_INCLUDE_CRYPTO := true
-# TW_INCLUDE_CRYPTO_FBE := true
-# TW_USE_FSCRYPT_POLICY := 2
+TW_INCLUDE_CRYPTO := true
+TW_INCLUDE_CRYPTO_FBE := true
+TW_USE_FSCRYPT_POLICY := 2
 # 이 플래그를 켜면 partitionmanager.cpp:688 의
 #   android::vold::fscrypt_mount_metadata_encrypted(...)
 # 가 실행되는데, 이 호출은 keystore2 -> keymint 를 binder 로 부르고

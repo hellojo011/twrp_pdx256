@@ -1,3 +1,9 @@
+
+# TWRP 의 QCOM 복호화 인프라를 불러옵니다.
+# prepdecrypt -> crypto.ready=1 -> qseecomd -> listeners.registered -> keymint/gatekeeper
+# 이 체인이 TWRP 가 원래 제공하는 정식 경로입니다.
+import /init.recovery.qcom_decrypt.rc
+
 # Copyright (c) 2017-2018,2020-2021 The Linux Foundation. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
