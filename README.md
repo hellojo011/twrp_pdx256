@@ -1,168 +1,193 @@
-# device/sony/pdx256 — TWRP device tree (초안)
+# device/sony/pdx256 — OrangeFox / TWRP device tree
 
-Sony **pdx256** / Qualcomm **SM8750 ("sun")** / Android 15.
-순정 `boot` · `vendor_boot` · `dtbo` · `recovery` 이미지에서 **직접 추출한 값**으로 만든 트리입니다.
-추측한 값은 전부 `TODO` 로 표시했습니다.
+Sony **pdx256** · Qualcomm **SM8750 ("sun")** · Android 15 · 1080x2340
 
-## 이미지 분석 결과
+부팅하고, 메뉴가 뜨고, **`/data` 복호화 패턴 입력까지 도달하는** 상태입니다.
 
-| 이미지 | 형식 | 내용 |
-|---|---|---|
-| `recovery` | boot hdr **v4**, `kernel_size=0` | 램디스크만 19,775,596 B (LZ4 legacy), 497개 항목 |
-| `boot` | boot hdr **v4**, `ramdisk_size=0` | 커널만 36,596,224 B (ARM64 `Image`, 비압축) |
-| `vendor_boot` | vendor hdr **v4** | vendor ramdisk 9,024,227 B (fragment 1개, PLATFORM) + DTB 6,062,476 B + bootconfig 238 B |
-| `dtbo` | DTBO v0 | 오버레이 71개, 총 20,847,248 B |
+빌드 베이스는 **OrangeFox 14.1** (`twrp-14`, android-14). 12.1은 매니페스트가
+스스로 모순이라(라이브러리는 지우고 소비자 코드는 남김) 포기했습니다.
 
-- 커널: `Linux version 6.6.92-android15-8-g6715ebef9908-ab14756967-4k` (GKI, 4K 페이지)
-- 빌드: `Sony/pdx256/pdx256:15/AQ3A.241126.002/SHIMANTO-1.1.0-REL-260522-1203:user/release-keys`
-- 보안 패치: 2026-06-01 / SDK 35 / `ro.product.cpu.abilist32` 비어 있음 (**64비트 전용**)
-- Virtual A/B + 압축 스냅샷 + 동적 파티션
-- vendor_boot DTB: Kera/KeraP/Sun/SunP/Tuna/TunaP SoC DTB 13종
-- dtbo 오버레이 중 Sony 전용 fragment(`somc,*` / `sony,camera_modules`)를 가진 것은
-  **index 43, 44, 45** (`Sun QRD SKU1`, `SKU1 V8 Power Grid`, `SKU2 V8 Power Grid`) 와 **56** (`SunP QRD HDK`)
-- dtbo 안에 `com.android.build.dtbo.fingerprint = Sony/pdx256/...` 로 기기 확인됨
-
-### 부팅 구조에서 중요한 점
-
-`recovery.img` 에 커널이 없습니다. 리커버리 부팅 시:
-
-```
-boot.img 의 커널  +  vendor_boot 의 vendor ramdisk  +  recovery 파티션의 램디스크
-```
-
-가 합쳐집니다. 그래서 **커널 모듈 306개(`modules.load.recovery`)를 TWRP가 직접 챙길 필요가 없습니다.**
-디스플레이(`msm_drm`, `dispcc-sun`, `panel_event_notifier`), 터치(`lxs_touchscreen`),
-UFS(`ufs-qcom`, `ufshcd-crypto-qti`), ICE(`qcom_ice`) 모두 vendor_boot 쪽에서 로드됩니다.
-→ TWRP 는 **램디스크만** 만들면 되고, 그래서 `BOARD_EXCLUDE_KERNEL_FROM_RECOVERY_IMAGE := true` 가 필수입니다.
-
-## 디렉터리
-
-```
-BoardConfig.mk                              보드 설정 (전부 추출값 기반)
-AndroidProducts.mk / twrp_pdx256.mk         제품 정의
-recovery/root/system/etc/recovery.fstab     TWRP fstab (순정 2종을 합침)
-recovery/root/init.recovery.qcom.rc         순정 그대로
-prebuilt/Image                              GKI 커널 (boot.img 에서 추출)
-prebuilt/dtb.img                            vendor_boot 의 DTB
-prebuilt/dtbo.img                           순정 dtbo (패딩 제거)
-prebuilt/vendor_ramdisk.cpio.lz4            vendor_boot 램디스크 (참고용)
-reference/                                  순정 fstab / rc / prop / 모듈 목록 원본
-tools/lz4_legacy_unpack.py                  LZ4 legacy 램디스크 해제 (Windows용, 의존성 없음)
-```
-
-## 확인 완료된 값
-
-- `super` 크기: **19327352832** (18 GiB) — 기기 `blockdev --getsize64` 확인
-- 화면: **1080x2340** — 기기 `wm size` 확인 → `TW_THEME := portrait_hdpi` + `TARGET_SCREEN_*`
-- super 그룹 이름: **`somc_dynamic_partitions`** (`qti_` 아님) — `super.sin` 의 LP 메타데이터 v10.2 에서 직접 확인
-  - 논리 파티션: `system 999366656` / `system_ext 933154816` / `product 4054171648` /
-    `vendor 1650360320` / `odm 2371584` / `vendor_dlkm 93687808` / `system_dlkm 12500992` (모두 `_a` 슬롯만 채워짐)
-
-### super_*.sin 구조
-
-`.sin` 은 **tar 컨테이너**입니다. `super.cms`(PKCS#7 서명) + `super.000`~`super.073`(Android sparse 조각).
-주의: 청크 타입에 표준에 없는 **`0xCAC5` = LZ4 블록 압축 RAW** 가 섞여 있어
-`simg2img` 로는 풀리지 않습니다. `tools/unpack_super.py` 가 이걸 처리합니다.
-
-## TODO 3 — /data 복호화
-
-`fileencryption=...wrappedkey_v0` + `metadata_encryption=aes-256-xts:wrappedkey_v0`,
-즉 **하드웨어 래핑 키**입니다. 키가 TEE 밖으로 나오지 않으므로 TWRP 안에서
-**keymint HAL 을 실제로 띄우는 것 말고는 방법이 없습니다.**
-
-`super.sin` 에서 `vendor_a` 를 뽑아 실제로 확인한 사실:
-
-- vintf 에 선언된 기본 HAL 은 `android.hardware.security.keymint` **v3 `IKeyMintDevice/default`**
-  → `/vendor/bin/hw/android.hardware.security.keymint-service-qti` (TEE/TZ 경로)
-- `keymint-service-spu-qti` 는 vintf 선언이 없는 **StrongBox** 인스턴스 → 불필요
-- keymint 는 **`qseecomd` 가 먼저 떠 있어야** 동작 (TA 로드)
-- keymaster TA 이미지는 vendor 안이 아니라 **modem 파티션**에 있고 `/vendor/firmware_mnt` 로 마운트됨
-  → `recovery.fstab` 의 `firmware_mnt` 항목이 필수 (이미 넣어둠)
-
-필요한 blob 은 keymint HAL 바이너리의 `DT_NEEDED` 를 재귀적으로 따라가 폐포를 구했습니다
-(`proprietary-files.txt`, **32개**). `libc/libdl/liblog/libm/libbinder_ndk/libvndksupport` 6개만
-vendor 밖이고 TWRP 램디스크에 이미 있습니다.
-
-작업 순서 — 이 환경(Windows)에서 실행하는 방법:
-
-```
-# PowerShell (추가 설치 불필요)
-powershell -ExecutionPolicy Bypass -File .\extract-blobs.ps1
-
-# 또는 Git Bash
-"C:/Program Files/Git/bin/bash.exe" ./extract-blobs.sh
-```
-
-**WSL 에서는 실행하지 마세요.** WSL2 는 기본적으로 USB 를 못 보기 때문에 기기가 안 잡힙니다.
-꼭 WSL 에서 돌려야 한다면 Windows 쪽 adb 를 넘겨주세요:
-
-```
-ADB=/mnt/c/Android/Sdk/platform-tools/adb.exe ./extract-blobs.sh
-```
-
-두 스크립트 모두 `adb exec-out` 을 씁니다. `adb shell` 로 받으면 개행 변환 때문에
-`.so` 파일이 깨지므로 절대 바꾸지 마세요. 스크립트 끝에서 ELF 헤더(`7f454c46`)를 검사합니다.
-
-`blobs.mk` 가 `recovery/root/vendor/` 를 통째로 램디스크에 복사하고,
-`recovery/root/system/etc/init/init.recovery.crypto.rc` 가 `qseecomd` → `keymint` 순서로 띄웁니다.
-
-남은 변수 두 가지:
-
-1. **SELinux** — TWRP 는 자체 정책으로 도는데 `qseecomd`/`vendor_keymint` 도메인이 없으면
-   HAL 이 죽습니다. 첫 시도는 permissive 로 확인하고, 붙으면 도메인을 추가하세요.
-   (`/sepolicy` 는 순정 recovery 램디스크에서 뽑아둔 것이 1.4MB 있습니다)
-2. **`metadata_encryption`** — `/metadata` 를 먼저 마운트해야 `/metadata/vold/metadata_encryption`
-   의 키를 읽습니다. fstab 순서상 `/data` 보다 앞에 있어야 하며 이미 그렇게 넣어뒀습니다.
-
-붙었는지 확인은 TWRP 터미널에서:
-
-```
-logcat -s vold keystore2 qseecomd
-```
-
-## TODO 4 — vendor/twrp
-
-특별한 작업이 없습니다. TWRP 최소 매니페스트를 받으면 `vendor/twrp` 가 같이 딸려옵니다.
-
-```
-repo init -u https://github.com/minimal-manifest-twrp/platform_manifest_twrp_aosp.git -b twrp-12.1
-repo sync -c -j8 --force-sync --no-clone-bundle --no-tags
-```
-
-동기화 후 `vendor/twrp/config/common.mk` 가 존재하는지만 확인하면 됩니다.
-
-**빌드는 반드시 WSL(Ubuntu-20.04) 안에서** 하세요. AOSP/TWRP 빌드 시스템은 Windows 에서 돌지 않습니다.
-그리고 소스는 **WSL 의 ext4 홈 디렉터리에 두어야** 합니다:
-
-```
-~/twrp        O   (ext4, 대소문자 구분)
-/mnt/d/...    X   (DrvFs. 대소문자 구분이 안 돼 빌드가 깨지고, 속도도 수 배 느립니다)
-```
-
-이 디바이스 트리만 `/mnt/d` 에서 복사해 넣으면 됩니다:
-
-```
-cp -r /mnt/d/Xperia/Recovery/device/sony ~/twrp/device/
-```
-Android 15(SDK 35) 대상이라 `twrp-12.1` 브랜치에서 빌드 오류가 나면
-`twrp-14.1` 매니페스트가 있는지 확인하고 그쪽을 쓰세요.
+---
 
 ## 빌드
 
-```
-repo init -u https://github.com/minimal-manifest-twrp/platform_manifest_twrp_aosp.git -b twrp-12.1
-repo sync -c -j8 --force-sync --no-clone-bundle --no-tags
-# 이 트리를 device/sony/pdx256 에 배치
-. build/envsetup.sh && lunch twrp_pdx256-eng && mka recoveryimage
-```
-
-## 플래시 (언락 필요, 주의)
-
-```
-fastboot --disable-verity --disable-verification flash vbmeta vbmeta.img
-fastboot flash recovery out/target/product/pdx256/recovery.img
+```bash
+repo init -u https://github.com/nebrassy/platform_manifest_twrp_aosp.git -b twrp-14 \
+          --depth=1 --repo-rev=v2.54 --no-repo-verify
+cd ~/orangefox/sync && ./orangefox_sync.sh --branch 14.1 --path ~/OrangeFox_14.1
+git clone <this repo> ~/OrangeFox_14.1/device/sony/pdx256
+cd ~/OrangeFox_14.1
+source build/envsetup.sh
+lunch twrp_pdx256-ap2a-eng
+mka adbd recoveryimage
 ```
 
-- Sony 부트로더 언락 시 **DRM 키가 소거**됩니다 (카메라 화질 등 일부 기능 영구 저하).
-- Virtual A/B 기기이므로 슬롯(`_a`/`_b`)을 확인하고 플래시하세요.
-- vbmeta 를 함께 처리하지 않으면 수정된 recovery 는 AVB 검증에서 막혀 부팅하지 않습니다.
+* `--repo-rev=v2.54` 없으면 `repo init` 이 실패합니다. `twrp-14` 매니페스트는
+  `name=` 없이 `path=` 만 쓰는 `<remove-project>` 를 686개 갖고 있는데, 구형
+  repo(v1.13.11)는 그 문법을 모릅니다.
+* lunch 는 android-14 형식 `<product>-<release>-<variant>` 입니다. release 는 `ap2a`.
+* `lunch` 에 파이프를 걸지 마세요. 서브셸에서 돌아 `TARGET_RELEASE` 가 안 남습니다.
+* WSL 이면 소스를 ext4 홈에 두세요. `/mnt/...` 는 대소문자 구분이 안 돼 빌드가 깨집니다.
+
+---
+
+## 기기 사실 (전부 순정 이미지에서 추출한 값)
+
+| | |
+|---|---|
+| recovery.img | boot header **v4**, `kernel_size=0` — **램디스크 전용** |
+| 커널 | `6.6.92-android15-8` GKI, boot.img 에서 옴 |
+| super | 19327352832 (18 GiB), 그룹 이름 **`somc_dynamic_partitions`** |
+| 화면 | 1080x2340 |
+| 암호화 | metadata(`wrappedkey_v0`) + FBE, 2층 구조 |
+
+`recovery` 파티션에는 램디스크만 들어갑니다. `BOARD_EXCLUDE_KERNEL_FROM_RECOVERY_IMAGE`
+가 그래서 필수입니다.
+
+리커버리 부팅 시 `boot.img` 커널 + `vendor_boot` 램디스크 + 이 램디스크가 합쳐지고,
+**커널 모듈 306개가 vendor_boot 의 `modules.load.recovery` 로 자동 로드**됩니다
+(디스플레이 `msm_drm`, 터치 `lxs_touchscreen` 포함). 모듈 이식이 필요 없습니다.
+
+---
+
+## `/data` 복호화
+
+TWRP 의 QCOM 복호화 인프라를 씁니다. OrangeFox 14.1 트리에는 이 파일들이 없어서
+동작하는 TWRP 이미지에서 이식했습니다.
+
+```
+init.recovery.qcom.rc  →  import /init.recovery.qcom_decrypt.rc
+      prepdecrypt.sh  →  crypto.ready=1
+      →  qseecomd  →  vendor.sys.listeners.registered=true
+      →  keymint + gatekeeper  →  keystore2  →  패턴 입력
+```
+
+vendor blob 46개는 **pdx256 자체 vendor 파티션**에서 뽑았고 `/vendor/bin(/hw)`,
+`/vendor/lib64` 에 둡니다. `/system` 이 아닌 이유: 이 세트에는 vendor 버전
+`libc++`(`__libcpp_verbose_abort` 보유), `libbase`, `libcrypto` 가 포함되는데
+`/system/lib64` 에 두면 Android 14 로 빌드된 TWRP 바이너리를 깨뜨립니다.
+rc 의 `LD_LIBRARY_PATH` 가 `/vendor/lib64` 를 먼저 보므로 vendor 프로세스에만 적용됩니다.
+
+### 실제로 막았던 두 가지 — 둘 다 디바이스 노드 권한
+
+**`/dev/smcinvoke`** (`0660 system drmrpc`)
+qseecomd 는 자기 확인용으로 root 로 한 번 열고, fork 한 자식이 권한을 낮춘 뒤
+`libminkdescriptor` 로 다시 엽니다. 노드가 커널 기본값 `root:root 0600` 이면 거기서 EACCES:
+
+```
+QSEECOMD: SUCCESS: While opening the device /dev/smcinvoke   <- 첫 open (root)
+SmcInvoke_MinkDescriptor: Failed to open invoke driver, errno = 13
+ListenerMngr: Error -1 getting clientEnv
+```
+
+**`/dev/0:0:0:49476`** (`0600 system system`) — UFS RPMB LUN
+
+```
+rpmb_ufs: Unable to open /dev/0:0:0:49476 (error no: 13)
+KeyMasterHalDevice: upgrade_key / ret: -8
+keystore2: Upgrade failed. / Error::Km(INCOMPATIBLE_BLOCK_MODE)
+I:Unable to decrypt metadata encryption
+```
+
+RPMB 는 keymaster 의 롤백 방지 카운터 저장소입니다. 여기 접근이 막히면
+`KEY_REQUIRES_UPGRADE(-62)` 를 영원히 해소할 수 없습니다.
+**오류 이름에 속아 패치 레벨을 두 번 헛짚었습니다. 원인은 두 줄 위에 있었습니다.**
+
+노드를 하나씩 쫓는 대신 **순정 `vendor/etc/ueventd.rc` 전문(441줄)** 을 넣었습니다.
+
+### 그 외 필요했던 것
+
+* `vendor.gatekeeper.is_security_level_spu=0` — 순정은 `init.qti.keymaster.sh` 가
+  soc_id(618)를 보고 세웁니다. 없으면 keymint 가 초기화 후 등록하지 않고 멈춥니다.
+* `fix_patchlevel.sh` — `16.1.0` / `2099-12-31`. keymaster 는 현재 값이 키보다
+  앞서면 업그레이드를 허용하고 뒤처지면 롤백으로 거부합니다.
+  `PLATFORM_SECURITY_PATCH` 는 android-14 의 `version_util.mk` 가 `ifdef` 로 막으므로
+  `resetprop` 을 씁니다.
+* `libqtigatekeeper.so` 를 `/vendor/lib64` 에도 둡니다 — `DT_NEEDED` 라 링커가
+  `hw/` 를 보지 않습니다.
+* `task_profiles.json` — 없으면 `logd` 가 `DropPrivs()` 에서 abort 합니다.
+  logd 없이는 keystore2 의 panic 메시지를 볼 수 없습니다.
+
+---
+
+## 알아둘 함정
+
+**`:= false` 가 켜는 플래그가 있습니다.** `ifdef` 로 검사하는 것들입니다.
+
+| 플래그 | 검사 | 결론 |
+|---|---|---|
+| `BOARD_INCLUDE_DTB_IN_BOOTIMG` | `ifdef` ×7 | **정의하지 말 것** |
+| `BOARD_INCLUDE_RECOVERY_DTBO` | `ifdef` ×4 | **정의하지 말 것** |
+| `TW_INCLUDE_CRYPTO` | `ifeq` + `ifneq(,)` | 끄려면 정의 자체를 지울 것 |
+| `TARGET_SUPPORTS_32_BIT_APPS` 등 | `ifeq` | `false` 안전 |
+
+**`TW_INCLUDE_FBE_METADATA_DECRYPT := false` 는 효과가 없습니다.**
+`Android.mk:348` 이 `TW_INCLUDE_CRYPTO` 가 켜져 있으면 `-DTW_INCLUDE_FBE_METADATA_DECRYPT`
+를 무조건 붙입니다.
+
+**android-14 가 막는 변수들** — `PLATFORM_SECURITY_PATCH`, `PLATFORM_SDK_VERSION`,
+`TARGET_PLATFORM_VERSION` 은 `ifdef` 하드 에러입니다. 구형 디바이스 트리에서
+복사해 오면 빌드가 즉시 죽습니다.
+
+**`PRODUCT_USE_DYNAMIC_PARTITIONS`** 는 제품 변수라 BoardConfig 에 쓰면 readonly 에러입니다.
+
+**`$(LOCAL_PATH)`** 는 제품 makefile 에서 자동 정의되지 않습니다. 직접 지정해야 합니다.
+
+---
+
+## 도구
+
+`tools/` 는 전부 파이썬 표준 라이브러리만 씁니다. Windows 에 `lz4` 도 `7z` 도 없어서
+만들었고, 펌웨어가 갱신돼도 같은 방식으로 재현됩니다.
+
+| | |
+|---|---|
+| `lz4_legacy_unpack.py` | LZ4 legacy 해제 (램디스크, super sparse) |
+| `unpack_super.py` | `super_*.sin` → 논리 파티션. **`.sin` 은 tar 컨테이너**이고 청크에 표준에 없는 `0xCAC5`(LZ4 압축 RAW)가 섞여 있어 `simg2img` 로는 안 풀립니다 |
+| `ext4_reader.py` | ext4 이미지에서 파일 목록/추출 |
+| `elf_deps.py` | `DT_NEEDED` 재귀 추적 |
+
+`DT_NEEDED` 만으로는 부족합니다. `qseecomd` 는 TZ 리스너 10개를 **`dlopen`** 으로
+로드하므로 ELF 의존성 테이블에 안 나옵니다. 바이너리 문자열에서 뽑아야 합니다.
+
+---
+
+## 스크린샷
+
+TWRP 내장 기능입니다. **전원 + 볼륨 다운** → 현재 저장소의 `screenshots/` 에 저장.
+`/data` 가 안 풀린 상태면 외장 SD 로 갑니다.
+
+```bash
+adb pull /external_sd/screenshots/
+```
+
+## 로그 뽑기
+
+`logcat` 은 `task_profiles.json` 덕에 동작합니다. 문제 생기면 세 개 다 필요합니다 —
+keystore2 의 panic 은 logcat 에, init/logd 의 FATAL 은 **dmesg** 에 남습니다.
+
+```bash
+adb shell "dmesg > /external_sd/dmesg.log; logcat -d > /external_sd/logcat.log; cp /tmp/recovery.log /external_sd/"
+```
+
+## blob 다시 뽑기
+
+```bash
+powershell -ExecutionPolicy Bypass -File .\extract-blobs.ps1   # 루팅된 기기에서
+```
+
+`adb exec-out` 을 씁니다. `adb shell` 로 받으면 개행 변환으로 `.so` 가 깨집니다.
+기기가 리커버리에 있으면 `/vendor` 는 램디스크뿐이므로, `tools/unpack_super.py` 로
+`super_*.sin` 에서 뽑는 편이 확실합니다 (바이트 동일함을 sha256 으로 확인했습니다).
+
+## 플래시
+
+```bash
+fastboot flash recovery recovery.img
+```
+
+* 언락 시 **Sony DRM 키가 영구 소거**됩니다.
+* 수정된 이미지를 부팅하려면 `vbmeta` 를
+  `--disable-verity --disable-verification` 으로 함께 플래시해야 합니다.
+* Virtual A/B 이므로 슬롯(`fastboot getvar current-slot`)을 확인하세요.
+* 순정 `recovery.img` 는 복구용으로 보관하세요.
