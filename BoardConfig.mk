@@ -49,12 +49,18 @@ BOARD_KERNEL_CMDLINE :=
 # BOARD_PREBUILT_DTBIMAGE_DIR 은 BOARD_INCLUDE_DTB_IN_BOOTIMG := true 일 때만
 # 허용되므로(board_config.mk:816) 아예 지정하지 않습니다.
 # prebuilt/dtb.img 는 참고용으로 트리에 남아 있습니다.
-BOARD_INCLUDE_DTB_IN_BOOTIMG := false
+#
+# 주의: BOARD_INCLUDE_DTB_IN_BOOTIMG 을 "false" 로 두면 안 됩니다.
+# core/Makefile 이 ifdef 로 검사해서(1058, 1327, 1629, 1789, 1815, 2746, 2880)
+# false 여도 "정의됨"=참으로 동작합니다. 그러면 INSTALLED_DTBIMAGE_TARGET 이
+# 잡히고 recovery.img 가 dtb.img 를 요구하는데, 만들 규칙이 없어 빌드가 죽습니다.
+# 끄려면 아예 정의하지 않아야 합니다.
 
 # dtbo.img: 71개 오버레이. Sony 전용 fragment 가 들어있는 것은 index 43/44/45
 # ("Sun QRD SKU1 / SKU1 V8 / SKU2 V8") 와 56 ("SunP QRD HDK").
 # TWRP 는 dtbo 를 교체하지 않으므로 순정 dtbo 를 그대로 씁니다.
-BOARD_INCLUDE_RECOVERY_DTBO := false
+# BOARD_INCLUDE_RECOVERY_DTBO 도 같은 이유로 정의하지 않습니다
+# (core/Makefile 2736, 2870, 5969, 6573 에서 ifdef 검사).
 # 순정 dtbo 를 그대로 쓰므로 빌드에서 dtbo.img 를 만들 필요가 없습니다.
 # prebuilt/dtbo.img 는 참고 및 재플래시용으로만 보관합니다.
 # BOARD_PREBUILT_DTBOIMAGE := $(DEVICE_PATH)/prebuilt/dtbo.img
