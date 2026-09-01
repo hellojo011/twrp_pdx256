@@ -144,14 +144,16 @@ BOARD_USES_QCOM_HARDWARE := true
 # 주의: 이름 그대로 "broken" 취급이라 향후 버전에서 사라질 수 있습니다.
 BUILD_BROKEN_ELF_PREBUILT_PRODUCT_COPY_FILES := true
 
-# recovery 바이너리와 TWRP 의 libtar.so 가 libsysutils.so 를 링크합니다.
-# 이게 없으면 부팅은 되지만 리커버리가 즉시 죽고 SONY 로고에서 멈춥니다:
+# TW_INCLUDE_FBE_METADATA_DECRYPT 를 켜면 bootable/recovery/Android.mk:369 가
+# recovery 바이너리에 libsysutils 를 링크합니다. 그런데 libsysutils.so 를
+# 램디스크에 "설치" 하는 쪽(prebuilt/Android.mk:362)은 아래 두 플래그가 모두
+# 켜져 있을 때만 동작합니다. 안 켜면 부팅은 되지만 리커버리가 즉시 죽고
+# SONY 로고에서 멈춥니다:
 #   CANNOT LINK EXECUTABLE "/system/bin/recovery":
 #   library "libsysutils.so" not found: needed by main executable
-# AOSP 의 libsysutils 에는 recovery_available 이 없어 recovery 변종이
-# 빌드되지 않으므로, patches/0001 을 먼저 적용해야 합니다
-# (apply-patches.sh 참고 -- repo sync 후 매번 필요).
-TARGET_RECOVERY_DEVICE_MODULES := libsysutils
+# 덤으로 리커버리 안에서 logcat 을 쓸 수 있게 됩니다 -- 복호화 디버깅에 필수.
+TWRP_INCLUDE_LOGCAT := true
+TARGET_USES_LOGD := true
 # keymint blob 은 빌드 모듈이 아니라 prebuilt 파일이므로 blobs.mk 의
 # PRODUCT_COPY_FILES 로 넣습니다. TARGET_RECOVERY_DEVICE_MODULES 에 적으면
 # "module not found" 로 빌드가 실패합니다.
