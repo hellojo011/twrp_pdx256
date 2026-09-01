@@ -8,7 +8,7 @@ set -u
 
 ADB="${ADB:-adb}"
 HERE="$(cd "$(dirname "$0")" && pwd)"
-OUT="$HERE/recovery/root"
+OUT="$HERE/recovery/root/system"   # /vendor 는 심볼릭 링크라 system/vendor 아래에 둡니다
 LIST="$HERE/proprietary-files.txt"
 
 command -v "$ADB" >/dev/null 2>&1 || { echo "adb 를 찾을 수 없습니다. ADB=<경로> 로 지정하세요."; exit 1; }
@@ -32,7 +32,7 @@ while read -r f; do
 done < "$LIST"
 
 echo
-echo "성공 $ok / 실패 $fail  ->  recovery/root/vendor/"
+echo "성공 $ok / 실패 $fail  ->  recovery/root/system/vendor/"
 echo
 echo "검증: ELF 헤더가 살아있는지 확인"
 find "$OUT/vendor" -name '*.so' 2>/dev/null | head -3 | while read -r x; do
