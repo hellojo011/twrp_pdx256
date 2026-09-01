@@ -10,7 +10,7 @@
     (keymint-service-spu-qti) 이 제공합니다. 우리는 그 HAL 을 넣지 않으므로
     선언하면 거짓말이 됩니다.
 
-    여기 적은 것은 실제로 램디스크에 들어있는 HAL 뿐입니다 --
+    여기 적은 것은 실제로 램디스크에 들어있는 HAL 뿐입니다.
     vendor/etc/vintf/manifest/android.hardware.security.keymint-service-qti.xml
     과 같은 내용의 default 인스턴스들.
 -->
