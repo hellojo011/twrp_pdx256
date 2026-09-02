@@ -280,3 +280,20 @@ OF_MAINTAINER := DIGIWB
 # png_get_IHDR 에서 interlace_type 을 NULL 로 버리고 png_set_interlace_handling()
 # 도 호출하지 않은 채 png_read_row() 로 순차 읽기만 하므로, Adam7 인터레이스
 # PNG 는 화면에 아무것도 안 뜹니다. (순정 테마 이미지는 전부 8bit RGBA, 비인터레이스)
+# 시계: orangefox.mk:571 의 OF_DEFAULT_TIMEZONE 기본값이
+#   CET-1;CEST,M3.5.0,M10.5.0  (중앙유럽시간)
+# 이라서 한국에서는 8시간 어긋납니다. data.cpp:1260 이 이 값을
+# TW_TIME_ZONE_VAR 초기값으로 씁니다. POSIX TZ 는 부호가 반대라
+# UTC+9 를 "KST-9" 로 씁니다. 한국은 서머타임이 없어 DST 규칙 불필요.
+OF_DEFAULT_TIMEZONE := KST-9
+# 시각 기준: Android.mk:430-438 의 화이트리스트가 msm8226~msm8998 까지라
+# TARGET_BOARD_PLATFORM := sun 은 QCOM_RTC_FIX 가 정의되지 않습니다.
+# 그러면 twrp-functions.cpp 의 Fixup_Time_On_Boot() 본체가 통째로
+# 컴파일에서 빠져서, 리커버리가 시스템 시각을 아예 세팅하지 않습니다.
+# (init 이 남긴 값이 그대로 보임 -> 실제와 몇 시간씩 어긋남)
+#
+# 켜면 /sys/class/rtc/rtc0/since_epoch 를 읽어 settimeofday() 하고,
+# 그래도 2018년 이전이면 ats_* 파일(퀄컴 시간 오프셋)로 재보정합니다.
+# 타임존(OF_DEFAULT_TIMEZONE)만으로는 못 고칩니다 - 타임존은 시 단위라
+# 분이 안 맞는 어긋남(15:17 -> 01:30)을 설명할 수 없습니다.
+TARGET_RECOVERY_QCOM_RTC_FIX := true
