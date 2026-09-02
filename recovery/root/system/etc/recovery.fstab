@@ -40,7 +40,15 @@ system_dlkm                               /system_dlkm       ext4    ro,barrier=
 
 # --- 외부 저장소 -----------------------------------------------------------
 /dev/block/mmcblk1p1                      /external_sd       vfat    nosuid,nodev                       wait;flags=display="MicroSD";storage;wipeingui;removable
-usb-otg                                   /usb_otg           vfat    nosuid,nodev                       wait;flags=display="USB OTG";storage;wipeingui;removable
+# USB OTG. 블록 디바이스를 고정하지 않고 sysfs 경로로 잡는다.
+# partition.cpp:438 이 "/devices/" 로 시작하는 항목을 Sysfs_Entry 로 바꾸고,
+# partitionmanager.cpp:3766 Handle_Uevent 가 add/remove 를 받아 실제
+# 블록 디바이스를 동적으로 채운다 (Coldboot 이 이미 꽂힌 것도 스캔).
+# 실측: SanDisk USB 3.2 를 꽂으면 sdd 로 붙는다 (sda~sdc 는 내장 UFS).
+# 글자는 상황에 따라 바뀔 수 있으므로 하드코딩하지 않는다.
+# fstype 은 auto - exFAT 드라이브가 흔한데 vfat 으로 고정하면 마운트에 실패한다.
+# (twrp.flags 는 블록 디바이스만 덮고 fstype 은 덮지 않는다 - partition.cpp:423)
+/devices/platform/soc/a600000.ssusb*      /usb_otg           auto    nosuid,nodev                       wait;flags=display="USB OTG";storage;wipeingui;removable
 
 # --- 이미지 파티션 (백업/플래시용) -----------------------------------------
 /dev/block/bootdevice/by-name/boot        /boot              emmc    defaults                           defaults;flags=slotselect;display="Boot";backup=1;flashimg=1

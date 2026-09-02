@@ -41,4 +41,8 @@
 
 # Removable storage
 /sdcard1               auto    /dev/block/mmcblk1p1                       /dev/block/mmcblk1      flags=fsflags=utf8;display="microsd";storage;wipeingui;removable
-/usb_otg               auto    /dev/block/sdc1                            /dev/block/sdc          flags=fsflags=utf8;display="USB-OTG";storage;wipeingui;removable
+
+# /usb_otg 는 recovery.fstab 이 sysfs 핫플러그 항목으로 담당한다.
+# 여기에 두면 partition.cpp:423 이 먼저 Primary_Block_Device 를 덮고
+# 438 이 그 값을 Sysfs_Entry 로 가져가 버려서 동적 탐지가 깨진다.
+# (예전 값 /dev/block/sdc1 은 내장 UFS LUN 이라 위험하기도 했다)
