@@ -187,6 +187,81 @@ avc: denied { open } path="/firmware_mnt/image/adsp.mdt"
 아무것도 안 뜹니다.** 순정 테마 이미지와 동일하게 192x192, 8bit RGBA,
 비인터레이스여야 합니다.
 
+### 한국어
+
+`ko_KR.xml` 은 OrangeFox 에 원래 들어 있고(1256줄, 영어 1270줄 대비 거의 완역)
+언어 목록에도 이미 뜹니다. **추가할 것이 아니라 고칠 것이었습니다.**
+
+테마 `font.xml` 은 모든 UI 텍스트에 Roboto 를 쓰는데 Roboto 에는 한글 글리프가
+없습니다. 언어 파일이 `fontoverride` 로 폰트를 바꿀 수 있는데 `ko_KR.xml` 에는
+그 자리에 주석만 있고 항목이 비어 있었습니다. `zh_CN.xml` / `zh_TW.xml` 만
+채워져 있습니다. 그래서 중국어 쪽 블록을 그대로 가져다 넣습니다.
+
+**새 폰트는 필요 없습니다.** 이미 램디스크에 있는 `wqy-microhei.ttf`(5.1MB) 의
+cmap 을 직접 파싱해 확인했습니다 — TTC 안의 두 폰트 모두 한글을 완전히 덮습니다:
+
+```
+한글 음절 U+AC00-U+D7A3 샘플 116자 중 누락 0
+자모 U+3131, 한자 U+4E00, 라틴 모두 포함
+```
+
+WenQuanYi Micro Hei 는 중국어 폰트로 알려져 있지만 Droid Sans Fallback 계열이라
+한글이 들어 있습니다.
+
+오버라이드는 `font.xml` 에 실재하는 이름 26개만 넣습니다. `zh_CN` 에는 이 테마에
+없는 `fixed` / `orangefont` 도 있어 그 둘은 뺐습니다.
+
+부팅부터 한국어로 뜨게 하려면 `TW_DEFAULT_LANGUAGE := ko_KR` 로 바꿉니다.
+다만 `/sdcard/Fox/.foxs` 에 저장된 설정이 컴파일 기본값보다 우선하므로,
+이미 다른 값이 저장돼 있으면 GUI 에서 바꿔야 합니다. (타임존도 마찬가지입니다 —
+`OF_DEFAULT_TIMEZONE := KST-9` 를 넣어도 저장된 값이 있으면 그쪽이 이깁니다)
+
+### USB OTG
+
+커널은 처음부터 정상이었습니다. `usb-storage` 와 `uas` 가 커널에 **내장**돼 있어
+모듈이 필요 없고, Type-C 역할 전환도 리커버리에서 동작합니다
+(`pmic_glink` 를 타므로 `adsp_boot.sh` 덕을 볼 가능성이 있습니다):
+
+```
+xhci-hcd xhci-hcd.1.auto: new USB bus registered
+usb 1-1: New USB device found, idVendor=0781, idProduct=55bd
+usb-storage 1-1:1.0: USB Mass Storage device detected
+sd 1:0:0:0: [sdd] 120164352 512-byte logical blocks (61.5 GB)
+sd 1:0:0:0: [sdd] Attached SCSI removable disk
+```
+
+**`sda` / `sdb` / `sdc` 는 전부 내장 UFS LUN 입니다** (`1d84000.ufshc`,
+`removable=0`, model `HN8T174EJKX075`). USB 저장장치는 그 다음 글자를 받습니다.
+구형 디바이스 트리에서 흔히 보이는 `/dev/block/sdc1` 같은 OTG 항목을 그대로
+복사하면 **내장 저장소를 가리킵니다** — 인식 실패보다 훨씬 위험합니다.
+
+글자를 하드코딩하지 말고 sysfs 핫플러그 항목을 쓰십시오:
+
+```
+/devices/platform/soc/a600000.ssusb*   /usb_otg   auto   nosuid,nodev   wait;flags=display="USB OTG";storage;wipeingui;removable
+```
+
+`partition.cpp:438` 이 `/devices/` 로 시작하는 항목을 `Sysfs_Entry` 로 바꾸고,
+`partitionmanager.cpp:3766` `Handle_Uevent` 가 add/remove 를 받아 실제 블록
+디바이스를 채웁니다. `Coldboot()` 이 이미 꽂혀 있던 것도 스캔합니다.
+
+**`fstype` 은 `auto` 여야 합니다.** exFAT 드라이브가 흔한데 `vfat` 으로 고정하면
+마운트에 실패합니다. `twrp.flags` 는 블록 디바이스만 덮고 fstype 은 덮지
+않습니다(`partition.cpp:423`).
+
+**같은 마운트 포인트를 `twrp.flags` 에 함께 두면 안 됩니다.** 423 이 먼저
+`Primary_Block_Device` 를 덮고 438 이 그 값을 `Sysfs_Entry` 로 가져가므로
+sysfs 방식이 반드시 깨집니다.
+
+드라이브를 뽑은 뒤에도 커널 로그로 장치 이름을 찾을 수 있습니다. 다만 이 기기는
+터치 이벤트가 로그를 빠르게 채우므로 꽂기 전에 비워두십시오:
+
+```bash
+adb shell dmesg -C
+# 케이블 빼고 -> OTG 꽂고 10초 -> 빼고 -> 케이블 다시 연결
+adb shell "dmesg | grep -iE 'usb-storage|Direct-Access|Attached SCSI'"
+```
+
 ### 백업 목록 — `twrp.flags` 가 필요합니다
 
 `recovery.fstab`(v2) 의 인라인 `;flags=...;backup=1` 만으로는 백업 화면에
