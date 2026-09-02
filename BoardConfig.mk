@@ -258,3 +258,15 @@ TW_MTP_DEVICE := /dev/mtp_usb
 
 # ro.recovery.usb.* 에서 확인
 TW_DEVICE_VERSION := pdx256-SHIMANTO-1.1.0
+
+# --- OrangeFox ------------------------------------------------------------
+# orangefox.mk:206 이 이 값을 -DOF_MAINTAINER 로 박아넣고, data.cpp:735 가
+# GUI 변수 %of_maintainer% 로 노출합니다.
+# 테마(pages/settings.xml)의 About 페이지는 of_maintainer 가 1/2/3(= OrangeFox
+# 개발자 본인) 이 "아닐" 때만 별도의 "Unofficial maintainer" 카드를 그립니다.
+# 즉 이름만 넣으면 카드가 자동으로 뜹니다. 비워두면 "Testing build (unofficial)".
+OF_MAINTAINER := DIGIWB
+
+# 그 카드의 아바타는 theme/images/Default/About/maintainer.png 리소스입니다.
+# 테마 원본이 bootable/recovery 안에 있어 repo sync 때 덮이므로, 디바이스
+# 트리에 두고 vendorsetup.sh + fox_callback.sh 로 램디스크에 덮어씌웁니다.

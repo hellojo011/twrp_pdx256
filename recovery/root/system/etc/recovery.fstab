@@ -26,6 +26,18 @@ system_dlkm                               /system_dlkm       ext4    ro,barrier=
 /dev/block/bootdevice/by-name/dsp         /vendor/dsp        ext4    ro,nosuid,nodev,barrier=1          wait,slotselect;flags=display="DSP";backup=1
 /dev/block/bootdevice/by-name/bluetooth   /vendor/bt_firmware vfat   ro,shortname=lower,uid=1002,gid=3002,dmask=227,fmask=337   wait,slotselect;flags=display="BT firmware";backup=0
 
+# --- EFS / NV (백업 전용) --------------------------------------------------
+# Sony TrimArea: IMEI, DRM 키, 센서 캘리브레이션, 부트로더 언락 상태가 들어있다.
+# 이 기기의 EFS 상당물이며, 순정 init.rc 의 tad 서비스가 이 파티션을 연다.
+# flashimg 는 일부러 뺐다 - 임의 이미지를 TA 에 굽는 건 벽돌 직행이다.
+/dev/block/bootdevice/by-name/TA          /TA                emmc    defaults                           defaults;flags=display="TA (TrimArea)";backup=1
+
+# Qualcomm 모뎀 NV. 기기에 실제로 없으면 TWRP 가 조용히 건너뛴다.
+/dev/block/bootdevice/by-name/modemst1    /efs1              emmc    defaults                           defaults;flags=display="EFS (modemst1)";backup=1
+/dev/block/bootdevice/by-name/modemst2    /efs2              emmc    defaults                           defaults;flags=display="EFS (modemst2)";backup=1
+/dev/block/bootdevice/by-name/fsg         /fsg               emmc    defaults                           defaults;flags=display="FSG";backup=1
+/dev/block/bootdevice/by-name/fsc         /fsc               emmc    defaults                           defaults;flags=display="FSC";backup=1
+
 # --- 외부 저장소 -----------------------------------------------------------
 /dev/block/mmcblk1p1                      /external_sd       vfat    nosuid,nodev                       wait;flags=display="MicroSD";storage;wipeingui;removable
 usb-otg                                   /usb_otg           vfat    nosuid,nodev                       wait;flags=display="USB OTG";storage;wipeingui;removable

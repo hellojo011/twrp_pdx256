@@ -22,3 +22,4 @@
 prebuilt/**    binary
 recovery/root/system/vendor/bin/**   binary
 recovery/root/system/vendor/lib64/** binary
+*.png          binary
