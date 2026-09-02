@@ -258,7 +258,6 @@ TW_MTP_DEVICE := /dev/mtp_usb
 
 # ro.recovery.usb.* 에서 확인
 TW_DEVICE_VERSION := pdx256-SHIMANTO-1.1.0
-
 # --- OrangeFox ------------------------------------------------------------
 # orangefox.mk:206 이 이 값을 -DOF_MAINTAINER 로 박아넣고, data.cpp:735 가
 # GUI 변수 %of_maintainer% 로 노출합니다.
@@ -267,6 +266,17 @@ TW_DEVICE_VERSION := pdx256-SHIMANTO-1.1.0
 # 즉 이름만 넣으면 카드가 자동으로 뜹니다. 비워두면 "Testing build (unofficial)".
 OF_MAINTAINER := DIGIWB
 
-# 그 카드의 아바타는 theme/images/Default/About/maintainer.png 리소스입니다.
-# 테마 원본이 bootable/recovery 안에 있어 repo sync 때 덮이므로, 디바이스
-# 트리에 두고 vendorsetup.sh + fox_callback.sh 로 램디스크에 덮어씌웁니다.
+# 그 카드의 아바타는 maintainer_img 리소스, 즉 램디스크의
+#   twres/images/Default/About/maintainer.png 입니다.
+# 테마 원본은 bootable/recovery 안이라 repo sync 때 날아가므로, 같은 경로를
+# recovery/root/ 아래에 두어 덮어씁니다. build/make/core/Makefile 의
+# 리커버리 이미지 레시피가
+#   2773  rsync  (베이스 램디스크)
+#   2780  OrangeFox_A14.sh  (테마/램디스크 가공)
+#   2815  cp -rf $(recovery_root_private) $(TARGET_RECOVERY_OUT)/
+# 순서로 돌기 때문에 recovery/root/ 가 항상 마지막에 이깁니다.
+#
+# 주의: PNG 는 8bit + 비인터레이스여야 합니다. minuitwrp/resources.cpp 는
+# png_get_IHDR 에서 interlace_type 을 NULL 로 버리고 png_set_interlace_handling()
+# 도 호출하지 않은 채 png_read_row() 로 순차 읽기만 하므로, Adam7 인터레이스
+# PNG 는 화면에 아무것도 안 뜹니다. (순정 테마 이미지는 전부 8bit RGBA, 비인터레이스)
