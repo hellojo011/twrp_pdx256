@@ -271,12 +271,32 @@ HAL 이 진동 캘리브레이션을 Sony TA 에서 읽는데 리커버리에는
 
 ## 스크린샷
 
-TWRP 내장 기능입니다. **전원 + 볼륨 다운** → 현재 저장소의 `screenshots/` 에 저장.
-`/data` 가 안 풀린 상태면 외장 SD 로 갑니다.
+TWRP 내장 기능이 있습니다 — `gui/gui.cpp:293` 이 볼륨다운+전원을 **200ms 이상 함께**
+누른 것을 감지해 `GUIAction::screenshotImpl()` 을 부릅니다. 저장 위치는
+`Fox_Home/screenshots/`, 즉 이 기기에서는 `/sdcard/Fox/screenshots/` 입니다
+(디렉터리를 못 만들면 `/tmp/` 로 폴백).
+
+**손으로 누르면 잘 안 잡힙니다.** 전원 키가 먼저 들어가면 화면 토글로 소비되기
+때문입니다. 볼륨다운을 먼저 누르고, 누른 채로 전원을 추가한 뒤 1초쯤 유지하십시오.
+
+확실한 방법은 `sendevent` 로 그 순서대로 주입하는 것입니다:
 
 ```bash
-adb pull /external_sd/screenshots/
+powershell -ExecutionPolicy Bypass -File .\tools\screenshot.ps1
 ```
+
+키 배치는 `/proc/bus/input/devices` 의 `B: KEY=` 비트맵에서 확인했습니다.
+비트맵은 64비트 워드를 **상위부터** 나열하므로, 마지막 워드가 키코드 0-63 입니다.
+
+| 장치 | 이벤트 | 비트맵 | 키코드 |
+|---|---|---|---|
+| `gpio-keys` | `event1` | `4000000000000` (2^50, 워드1) | 64+50 = 114 `KEY_VOLUMEDOWN` |
+| `pmic_resin` | `event2` | `8000000000000` (2^51, 워드1) | 64+51 = 115 `KEY_VOLUMEUP` |
+| `pmic_pwrkey` | `event3` | `10000000000000` (2^52, 워드1) | 64+52 = 116 `KEY_POWER` |
+
+이 기기에는 `/dev/graphics/fb0` 이 없습니다. DRM(`/dev/dri/card0`) 을 쓰므로
+프레임버퍼를 밖에서 직접 덤프하는 방법은 쓸 수 없습니다. 리커버리가 DRM 마스터를
+쥐고 있는 동안에는 TWRP 자신에게 찍게 하는 것이 유일한 방법입니다.
 
 ## 로그 뽑기
 
