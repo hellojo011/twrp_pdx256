@@ -110,6 +110,123 @@ RPMB 는 keymaster 의 롤백 방지 카운터 저장소입니다. 여기 접근
 
 ---
 
+## UI 주변 기능
+
+### 배터리 잔량 — ADSP 를 띄워야 합니다
+
+SM8750 은 연료게이지와 충전기가 **ADSP 의 충전 펌웨어 뒤에** 있습니다.
+`qti_battery_charger` 모듈이 로드되어 있어도 `pmic_glink` 로 ADSP 에 붙은
+뒤에야 `/sys/class/power_supply/battery` 를 등록합니다. 리커버리는 ADSP 를
+띄우지 않으므로 `power_supply` 클래스가 통째로 비고, 잔량이 `-1%` 로 나옵니다.
+**sysfs 경로를 아무리 지정해도 해결되지 않습니다** — 데이터 소스 자체가 없습니다.
+
+ADSP 기동을 막는 것은 SELinux 입니다:
+
+```
+avc: denied { open } path="/firmware_mnt/image/adsp.mdt"
+     scontext=u:r:kernel:s0 tcontext=u:object_r:vfat:s0 permissive=0
+```
+
+커널 펌웨어 로더는 `u:r:kernel:s0` 자격으로 파일을 엽니다. 순정처럼
+`context=u:object_r:firmware_file:s0` 으로 마운트하려 해도 **그 타입이 리커버리
+정책에 없어서** `mount` 가 `EINVAL` 로 실패합니다. 실측한 정책 보유 타입:
+
+| 타입 | 리커버리 정책 |
+|---|---|
+| `vfat`, `tmpfs` | 있음 (그러나 kernel 이 읽지 못함) |
+| `firmware_file`, `system_file` | **없음** |
+| `rootfs` | 있고 **kernel 이 읽을 수 있음** |
+
+그래서 `adsp_boot.sh` 가 modem 파티션에서 펌웨어를 읽어 `/lib/firmware`(rootfs)
+로 복사한 뒤 거기서 로드합니다. 약 21MB, Enforcing 상태 그대로 동작합니다.
+같은 기법이 다른 remoteproc 펌웨어에도 그대로 적용됩니다.
+
+`TW_USE_LEGACY_BATTERY_SERVICES := true` 도 필요합니다. `twrp.cpp:565` 는 이
+플래그가 있을 때만 sysfs 를 직접 읽고, 없으면 health HAL 로 가는데 이 기기는
+리커버리에서 health@2.0 이 제대로 올라오지 않습니다.
+
+### 시계
+
+`Android.mk:430-438` 의 화이트리스트가 `msm8226`~`msm8998` 까지라
+`TARGET_BOARD_PLATFORM := sun` 은 `QCOM_RTC_FIX` 가 정의되지 않습니다.
+그러면 `Fixup_Time_On_Boot()` 본체가 통째로 컴파일에서 빠져(두 변형 모두
+`#ifdef QCOM_RTC_FIX` 로 감싸여 있습니다) 리커버리가 시각을 아예 세팅하지
+않습니다. `TARGET_RECOVERY_QCOM_RTC_FIX := true` 로 켭니다.
+
+타임존은 별개입니다. `orangefox.mk:571` 의 `OF_DEFAULT_TIMEZONE` 기본값이
+`CET-1;CEST,...`(중앙유럽) 이라 `OF_DEFAULT_TIMEZONE := KST-9` 로 바꿉니다.
+**타임존만으로는 못 고칩니다** — 오프셋은 시 단위라 분까지 어긋나는 증상은
+기준 시각이 없다는 뜻입니다.
+
+### About 의 메인테이너 카드
+
+테마에 이미 있습니다. `pages/settings.xml` 의 About 페이지가 `of_maintainer`
+가 1/2/3(OrangeFox 개발자 본인) 이 **아닐 때만** "Unofficial maintainer" 카드를
+그립니다. `OF_MAINTAINER := DIGIWB` 만 넣으면 카드가 뜹니다.
+
+아바타는 그 카드의 `maintainer_img`, 즉 램디스크의
+`twres/images/Default/About/maintainer.png` 입니다. 테마 원본은
+`bootable/recovery` 안이라 `repo sync` 때 날아가므로 **같은 경로를
+`recovery/root/` 아래에 둡니다.** `build/make/core/Makefile` 의 리커버리 이미지
+레시피가
+
+```
+2773  rsync (베이스 램디스크)
+2780  OrangeFox_A14.sh (테마/램디스크 가공)
+2815  cp -rf $(recovery_root_private) $(TARGET_RECOVERY_OUT)/
+```
+
+순서로 돌기 때문에 `recovery/root/` 가 **항상 마지막에 이깁니다.** 환경변수도
+필요 없습니다. (`FOX_LOCAL_CALLBACK_SCRIPT` 훅도 있지만 그건 make 변수가 아니라
+셸 환경에서 읽히므로, `vendorsetup.sh` 가 생기기 전에 `envsetup.sh` 를 source 한
+셸에서 빌드하면 조용히 건너뜁니다.)
+
+**PNG 규격 주의.** `minuitwrp/resources.cpp` 는 `png_get_IHDR` 에서
+`interlace_type` 을 `NULL` 로 버리고 `png_set_interlace_handling()` 도 부르지
+않은 채 `png_read_row()` 로 순차 읽기만 합니다. **Adam7 인터레이스 PNG 는 화면에
+아무것도 안 뜹니다.** 순정 테마 이미지와 동일하게 192x192, 8bit RGBA,
+비인터레이스여야 합니다.
+
+### 백업 목록 — `twrp.flags` 가 필요합니다
+
+`recovery.fstab`(v2) 의 인라인 `;flags=...;backup=1` 만으로는 백업 화면에
+Data 와 Super 만 떴습니다. TWRP 는 `/etc/twrp.flags`(v1 포맷) 를 따로 읽어
+목록을 채웁니다(`partitionmanager.cpp:360`). EFS/TA 계열은 이쪽에 넣습니다.
+
+이 기기의 EFS 상당물은 **Sony TrimArea(`TA`)** 입니다 — IMEI, DRM 키, 캘리브레이션,
+부트로더 언락 상태. 순정 `init.rc` 의 `tad` 서비스가 여는 파티션입니다.
+`modemst1` / `modemst2` / `fsg` / `fsc` / `LTALabel` 도 실재를 확인했습니다.
+
+`TA` 에는 `flashimg` 를 주지 않았습니다. 임의 이미지를 굽는 건 벽돌 직행입니다.
+
+### 진동 — 없습니다
+
+이 기기의 진동자는 PMIC 햅틱이 아니라 **Cirrus Logic CS40L25A**(I2C `6-0040`)
+입니다. 순정 dtbo 조차 `qcom,hv-haptics` 를 `status="disable"` 로 둡니다.
+
+커널 계층은 이식에 성공했습니다 — `cirrus_wm_adsp.ko` + `cirrus_cs40l2x.ko`
+(vendor_dlkm) 와 DSP 펌웨어(vendor:`/firmware/cs40l25a_*`) 를 올리면
+`/sys/class/leds/cs40l25:vibrator` 가 생깁니다. 막힌 곳은 벤더 HAL 입니다:
+
+```
+E Vibrator: miscta_get_unit_size: id=4730 error 1
+init: Service 'vendor.vibrator.cs40l25' received signal 11
+```
+
+HAL 이 진동 캘리브레이션을 Sony TA 에서 읽는데 리커버리에는 그걸 중개하는
+`tad` 데몬도 `/dev/socket/tad` 도 없습니다. **남은 작업은 `tad` 이식입니다.**
+
+**HAL 이 없을 때의 비용을 반드시 알아두십시오.** `events.cpp:162` 는 터치마다
+`AServiceManager_getService(kVibratorInstance)` 를 호출하고, 서비스가 없으면
+최대 5초를 블로킹합니다. 즉 "진동이 안 되는" 정도가 아니라 **UI 전체가 멎습니다.**
+그래서 `TW_NO_HAPTICS := true` 로 호출 경로 자체를 없앴습니다.
+(sysfs 백엔드는 `/sys/class/leds/vibrator/activate` 로 경로가 하드코딩돼 있어
+`cs40l25:vibrator` 와 매치되지 않고, sysfs 에는 심볼릭 링크를 만들 수 없습니다.)
+
+전체 이식 시도와 blob 은 `git log --all --grep=CS40L25A` 로 찾을 수 있습니다.
+
+---
+
 ## 알아둘 함정
 
 **`:= false` 가 켜는 플래그가 있습니다.** `ifdef` 로 검사하는 것들입니다.
