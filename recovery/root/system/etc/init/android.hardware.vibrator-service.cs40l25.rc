@@ -1,0 +1,76 @@
+# CS40L25A vibrator HAL (AIDL IVibrator/default)
+#
+# !!! 현재 자동 시작하지 않는다 - 이식 미완 !!!
+#
+# 커널 쪽은 성공했다: haptics_boot.sh 가 cirrus_wm_adsp / cirrus_cs40l2x 를
+# 올리면 /sys/class/leds/cs40l25:vibrator 가 생긴다.
+# 그런데 이 HAL 은 진동 캘리브레이션을 Sony TA(TrimArea) 에서 읽는다:
+#     E Vibrator: miscta_get_unit_size: id=4730 error 1
+#     init: Service 'vendor.vibrator.cs40l25' received signal 11
+# 리커버리에는 TA 를 중개하는 tad 데몬도 /dev/socket/tad 도 없어서
+# libmiscta 호출이 실패하고 곧바로 SIGSEGV 로 죽는다. init 이 5초마다
+# 재시작하므로 IVibrator 는 영영 등록되지 않는다.
+#
+# 그 상태를 방치하면 TWRP 가 터치마다 events.cpp:162 의
+#     AServiceManager_getService(kVibratorInstance)
+# 에서 최대 5초를 블로킹해 UI 전체가 멎는다. 그래서 트리거를 아무도
+# 세팅하지 않는 속성으로 두어 자동 시작을 막는다.
+#
+# 되살리는 순서:
+#   1) tad 데몬 이식 (+ /dev/socket/tad, TA 파티션 접근)
+#   2) 아래 트리거를 on property:vendor.haptics.ready=1 로 되돌린다
+#   3) BoardConfig 의 TW_NO_HAPTICS 제거,
+#      TW_SUPPORT_INPUT_AIDL_HAPTICS / _FIX_OFF 주석 해제
+#
+# 순정 rc 대비 바뀐 점:
+#   - class hal 제거 + disabled (리커버리는 class_start hal 을 하지 않는다)
+#   - user system -> root, seclabel u:r:recovery:s0
+#     (이 트리의 다른 이식 HAL - keymint/gatekeeper - 과 동일한 패턴)
+#   - LD_LIBRARY_PATH 명시: libmiscta.so 등은 DT_NEEDED 라
+#     /vendor/lib64 가 검색 경로에 있어야 한다
+
+on property:vendor.haptics.hal_enabled=1
+    chown root root /sys/class/leds/cs40l25:vibrator/activate
+    chown root root /sys/class/leds/cs40l25:vibrator/brightness
+    chown root root /sys/class/leds/cs40l25:vibrator/duration
+    chown root root /sys/class/leds/cs40l25:vibrator/state
+    chown root root /sys/class/leds/cs40l25:vibrator/device/asp_enable
+    chown root root /sys/class/leds/cs40l25:vibrator/device/available_pwle_segments
+    chown root root /sys/class/leds/cs40l25:vibrator/device/clab_enable
+    chown root root /sys/class/leds/cs40l25:vibrator/device/comp_enable
+    chown root root /sys/class/leds/cs40l25:vibrator/device/cp_dig_scale
+    chown root root /sys/class/leds/cs40l25:vibrator/device/cp_trigger_duration
+    chown root root /sys/class/leds/cs40l25:vibrator/device/cp_trigger_index
+    chown root root /sys/class/leds/cs40l25:vibrator/device/cp_trigger_q_sub
+    chown root root /sys/class/leds/cs40l25:vibrator/device/cp_trigger_queue
+    chown root root /sys/class/leds/cs40l25:vibrator/device/dig_scale
+    chown root root /sys/class/leds/cs40l25:vibrator/device/exc_enable
+    chown root root /sys/class/leds/cs40l25:vibrator/device/f0_stored
+    chown root root /sys/class/leds/cs40l25:vibrator/device/f0_offset
+    chown root root /sys/class/leds/cs40l25:vibrator/device/fw_rev
+    chown root root /sys/class/leds/cs40l25:vibrator/device/gpio1_fall_dig_scale
+    chown root root /sys/class/leds/cs40l25:vibrator/device/gpio1_fall_index
+    chown root root /sys/class/leds/cs40l25:vibrator/device/gpio1_rise_dig_scale
+    chown root root /sys/class/leds/cs40l25:vibrator/device/gpio1_rise_index
+    chown root root /sys/class/leds/cs40l25:vibrator/device/heartbeat
+    chown root root /sys/class/leds/cs40l25:vibrator/device/hw_reset
+    chown root root /sys/class/leds/cs40l25:vibrator/device/num_waves
+    chown root root /sys/class/leds/cs40l25:vibrator/device/pwle
+    chown root root /sys/class/leds/cs40l25:vibrator/device/pwle_ramp_down
+    chown root root /sys/class/leds/cs40l25:vibrator/device/q_stored
+    chown root root /sys/class/leds/cs40l25:vibrator/device/redc_comp_enable
+    chown root root /sys/class/leds/cs40l25:vibrator/device/redc_stored
+    chown root root /sys/class/leds/cs40l25:vibrator/device/standby_timeout
+    chown root root /sys/class/leds/cs40l25:vibrator/device/vbatt_max
+    chown root root /sys/class/leds/cs40l25:vibrator/device/vbatt_min
+    chown root root /sys/class/leds/cs40l25:vibrator/device/vibe_state
+    start vendor.vibrator.cs40l25
+
+service vendor.vibrator.cs40l25 /vendor/bin/hw/android.hardware.vibrator-service.cs40l25
+    user root
+    group root
+    setenv LD_LIBRARY_PATH /vendor/lib64:/vendor/lib:/system/lib64:/system/lib:/sbin
+    setenv PROPERTY_PREFIX ro.vendor.vibrator.hal.
+    setenv HWAPI_PATH_PREFIX /sys/class/leds/cs40l25:vibrator/
+    disabled
+    seclabel u:r:recovery:s0

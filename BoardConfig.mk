@@ -306,3 +306,35 @@ TARGET_RECOVERY_QCOM_RTC_FIX := true
 #   TW_CUSTOM_BATTERY_PATH := "/sys/class/power_supply/<이름>"
 # 를 쓰면 됩니다 (Android.mk:419 가 legacy 를 자동으로 켜줍니다).
 TW_USE_LEGACY_BATTERY_SERVICES := true
+# 진동: 이 기기의 진동자는 PMIC 햅틱이 아니라 Cirrus CS40L25A 다.
+# (순정 dtbo 조차 qcom,hv-haptics 를 status="disable" 로 둔다)
+#
+# minuitwrp/events.cpp 의 sysfs 백엔드는 경로가 하드코딩돼 있고
+#   #define LEDS_HAPTICS_ACTIVATE_FILE "/sys/class/leds/vibrator/activate"
+# 실제 노드는 /sys/class/leds/cs40l25:vibrator 라 절대 매치되지 않는다.
+# sysfs 에는 심볼릭 링크를 만들 수 없어 우회도 불가능하다.
+# 그래서 벤더 AIDL HAL(IVibrator/default) 을 이식하고 그쪽 백엔드를 쓴다.
+# 플래그 배선: vendor/twrp/build/soong/Android.bp:299
+# TW_SUPPORT_INPUT_AIDL_HAPTICS := true
+
+# 재생 시간이 지나면 off() 를 명시적으로 호출한다 (events.cpp:164).
+# 이게 없으면 진동이 켜진 채로 남을 수 있다 - 실제로 겪었다.
+# TW_SUPPORT_INPUT_AIDL_HAPTICS_FIX_OFF := true
+
+# --- 진동 비활성 (이식 미완) ------------------------------------------------
+# 커널 쪽은 성공했다: cirrus_cs40l2x 로드 -> /sys/class/leds/cs40l25:vibrator 생성.
+# 그러나 벤더 HAL 이 SIGSEGV 로 죽고 5초마다 재시작한다:
+#   E Vibrator: miscta_get_unit_size: id=4730 error 1
+#   init: Service 'vendor.vibrator.cs40l25' received signal 11
+# HAL 은 진동 캘리브레이션을 Sony TA(TrimArea) 에서 읽는데, 그걸 중개하는
+# tad 데몬과 /dev/socket/tad 가 리커버리에 없다. 읽기 실패 후 죽는다.
+#
+# 그 상태로 두면 IVibrator 가 영영 등록되지 않고, events.cpp:162 의
+#   AServiceManager_getService(kVibratorInstance)
+# 가 터치마다 최대 5초를 블로킹한다 -> UI 전체가 심하게 렉이 걸린다.
+# 그래서 AIDL 백엔드를 끄고 햅틱 자체를 비활성화한다.
+# (DataManager::Vibrate 가 통째로 no-op 이 되어 블로킹이 원천 차단된다)
+#
+# 되살리려면: tad 이식 -> 위 두 줄 주석 해제 -> TW_NO_HAPTICS 제거 ->
+#             HAL rc 의 트리거를 vendor.haptics.ready=1 로 되돌린다.
+TW_NO_HAPTICS := true

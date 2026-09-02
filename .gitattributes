@@ -23,4 +23,7 @@ prebuilt/**    binary
 recovery/root/system/vendor/bin/**   binary
 recovery/root/system/vendor/lib64/** binary
 *.png          binary
-*.png          binary
+*.ko           binary
+*.wmfw         binary
+*.bin          binary
+recovery/root/vendor/bin/hw/**  binary
