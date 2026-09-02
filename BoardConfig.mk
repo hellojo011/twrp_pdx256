@@ -297,3 +297,12 @@ OF_DEFAULT_TIMEZONE := KST-9
 # 타임존(OF_DEFAULT_TIMEZONE)만으로는 못 고칩니다 - 타임존은 시 단위라
 # 분이 안 맞는 어긋남(15:17 -> 01:30)을 설명할 수 없습니다.
 TARGET_RECOVERY_QCOM_RTC_FIX := true
+# 배터리: twrp.cpp:565 는 이 플래그가 있을 때만 sysfs 를 직접 읽고,
+# 없으면 GetBatteryInfo() -> health HAL 로 갑니다. 이 기기는 리커버리에서
+# health@2.0 HAL 이 제대로 안 올라와서 잔량이 안 잡힙니다.
+# 이 플래그를 켜면 /sys/class/power_supply/battery/{capacity,status} 를
+# 직접 읽으므로 HAL 을 우회합니다.
+# 노드 이름이 battery 가 아닌 것으로 확인되면 대신
+#   TW_CUSTOM_BATTERY_PATH := "/sys/class/power_supply/<이름>"
+# 를 쓰면 됩니다 (Android.mk:419 가 legacy 를 자동으로 켜줍니다).
+TW_USE_LEGACY_BATTERY_SERVICES := true

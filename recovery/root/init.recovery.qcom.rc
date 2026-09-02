@@ -79,3 +79,14 @@ service fix_patchlevel /system/bin/fix_patchlevel.sh
     disabled
     oneshot
     seclabel u:r:recovery:s0
+# ADSP 를 띄워 배터리 노드를 등록시킨다. 자세한 이유는 스크립트 주석 참고.
+# post-fs 는 init.rc 의 late-init 에서 fs 다음으로 발동한다.
+on post-fs
+    start adsp_boot
+
+service adsp_boot /system/bin/adsp_boot.sh
+    user root
+    group root
+    disabled
+    oneshot
+    seclabel u:r:recovery:s0
