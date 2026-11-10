@@ -90,3 +90,15 @@ service adsp_boot /system/bin/adsp_boot.sh
     disabled
     oneshot
     seclabel u:r:recovery:s0
+
+# 발열 완화. 리커버리에는 thermal-engine / thermal HAL 이 없어서 커널 step_wise
+# governor 만 동작한다. 그 상태에서 프라임 코어(policy6)가 메뉴 대기 중에도
+# 2.8~3.5GHz 로 돈다. 상한을 2.0GHz 로 낮추면 60초 만에 실측으로
+#   cpu-1-0-1  68.7C -> 52.5C
+#   cpu-1-1-1  63.7C -> 53.2C
+# 로 내려갔다. (커널이 가장 가까운 OPP 인 1958400 으로 맞춘다)
+# 리커버리 작업은 대부분 I/O 바운드라 체감 성능 차이는 거의 없다.
+# policy0(코어 0-5)은 대기 중 384MHz 까지 잘 내려가므로 건드리지 않는다.
+on boot
+    wait /sys/devices/system/cpu/cpufreq/policy6/scaling_max_freq 10
+    write /sys/devices/system/cpu/cpufreq/policy6/scaling_max_freq 2000000
