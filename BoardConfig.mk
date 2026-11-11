@@ -307,11 +307,30 @@ TARGET_RECOVERY_QCOM_RTC_FIX := true
 # 를 쓰면 됩니다 (Android.mk:419 가 legacy 를 자동으로 켜줍니다).
 TW_USE_LEGACY_BATTERY_SERVICES := true
 
-# 진동: 이 기기에는 없다.
-# 진동자는 PMIC 햅틱이 아니라 Cirrus CS40L25A 이고, 커널 모듈과 DSP 펌웨어를
-# 올리면 /sys/class/leds/cs40l25:vibrator 까지는 만들 수 있다. 그러나 벤더
-# HAL 이 Sony TA 에서 캘리브레이션을 읽지 못해(tad 데몬 부재) SIGSEGV 로 죽고,
-# HAL 이 없으면 events.cpp:162 의 getService 가 터치마다 최대 5초를 블로킹해
-# UI 가 멎는다. 그래서 햅틱 호출 경로 자체를 없앤다.
-# 전체 이식 시도와 blob 은 커밋 78e0328 에 남아 있다.
-TW_NO_HAPTICS := true
+# 진동: Cirrus CS40L25A (I2C 6-0040). PMIC 햅틱이 아니다 - 순정 dtbo 조차
+# qcom,hv-haptics 를 status="disable" 로 둔다.
+#
+# minuitwrp/events.cpp 의 sysfs 백엔드는 경로가 하드코딩돼 있고
+#   #define LEDS_HAPTICS_ACTIVATE_FILE "/sys/class/leds/vibrator/activate"
+# 실제 노드는 /sys/class/leds/cs40l25:vibrator 라 매치되지 않는다. sysfs 에는
+# 심볼릭 링크를 만들 수 없어 우회도 안 된다. 그래서 벤더 AIDL HAL
+# (IVibrator/default) 을 띄우고 그쪽 백엔드를 쓴다.
+# 플래그 배선: vendor/twrp/build/soong/Android.bp:299
+#
+# 필요한 것 전부 (recovery/root 아래):
+#   system/bin/tad, wait4tad        순정 리커버리 이미지에서. HAL 이 캘리브레이션을
+#                                   Sony TA 에서 읽는다 (libmiscta -> /dev/socket/tad)
+#   vendor/lib/modules/cirrus_*.ko  드라이버 (vendor_dlkm 소속)
+#   vendor/etc/cirrus-fw/*          DSP 펌웨어. haptics_boot.sh 가 /lib/firmware 로 복사
+#   vendor/bin/hw/...cs40l25        HAL. tools/patch_vibrator_hal.py 로 2군데 패치함
+#                                   (리커버리는 libbinder 인스턴스가 하나라서)
+#
+# 주의: HAL 이 등록되지 않은 상태에서는 events.cpp:162 의
+#   AServiceManager_getService(kVibratorInstance)
+# 가 터치마다 최대 5초를 블로킹해 UI 가 멎는다. HAL 이 안 뜨는 빌드라면
+# 이 두 줄 대신 TW_NO_HAPTICS := true 를 써야 한다. 급할 때는 리커버리
+# 설정에서 진동 세기를 0 으로 두면 호출 자체가 일어나지 않는다.
+TW_SUPPORT_INPUT_AIDL_HAPTICS := true
+
+# 재생 시간이 지나면 off() 를 명시적으로 호출한다 (events.cpp:164).
+TW_SUPPORT_INPUT_AIDL_HAPTICS_FIX_OFF := true

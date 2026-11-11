@@ -27,3 +27,5 @@ recovery/root/system/vendor/lib64/** binary
 *.wmfw         binary
 *.bin          binary
 recovery/root/vendor/bin/hw/**  binary
+recovery/root/system/bin/tad binary
+recovery/root/system/bin/wait4tad binary

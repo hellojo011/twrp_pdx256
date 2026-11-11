@@ -102,3 +102,28 @@ service adsp_boot /system/bin/adsp_boot.sh
 on boot
     wait /sys/devices/system/cpu/cpufreq/policy6/scaling_max_freq 10
     write /sys/devices/system/cpu/cpufreq/policy6/scaling_max_freq 2000000
+
+# 진동 (Cirrus CS40L25A). 벤더 HAL 이 캘리브레이션을 Sony TA 에서 읽으므로
+# TrimArea 데몬이 먼저 떠 있어야 한다. tad / wait4tad 는 순정 리커버리
+# 이미지(recovery_X-FLASH-ALL-B083.img)의 /system/bin 에서 가져왔고,
+# 서비스 정의도 순정 리커버리 init.rc 그대로다 (seclabel 만 다르다 -
+# u:r:tad:s0 도메인이 이 정책에 없다).
+# TA 노드의 소유자(oem_2997)와 권한은 vendor/etc/ueventd.rc 가 맞춰 준다.
+on post-fs
+    wait /dev/block/bootdevice/by-name/TA 5
+    start tad
+    start haptics_boot
+
+service tad /system/bin/tad /dev/block/bootdevice/by-name/TA 0,16
+    user oem_2997
+    group oem_2997 root
+    socket tad stream 0660 system oem_2993
+    disabled
+    seclabel u:r:recovery:s0
+
+service haptics_boot /system/bin/haptics_boot.sh
+    user root
+    group root
+    disabled
+    oneshot
+    seclabel u:r:recovery:s0

@@ -1,0 +1,88 @@
+# CS40L25A vibrator HAL (AIDL IVibrator/default)
+#
+# 순정 /vendor/etc/init/android.hardware.vibrator-service.cs40l25.rc 를
+# 리커버리용으로 각색했다.
+#
+# 시작 순서 (init.recovery.qcom.rc 참고):
+#   post-fs: tad 시작 -> haptics_boot.sh 가 드라이버/펌웨어를 올리고
+#            wait4tad 로 tad 응답을 확인 -> vendor.haptics.ready=1
+#   여기:    그 속성을 받아 sysfs 권한을 맞추고 HAL 을 띄운다
+#
+# 순정 대비 바뀐 점:
+#   - "on boot" -> "on property:vendor.haptics.ready=1"
+#   - class hal 제거 + disabled (리커버리는 class_start hal 을 하지 않는다)
+#   - user system -> root, seclabel u:r:recovery:s0
+#     (이 트리의 다른 이식 HAL - keymint/gatekeeper - 과 같은 패턴)
+#   - LD_LIBRARY_PATH 명시: libmiscta.so 등은 DT_NEEDED 라 /vendor/lib64 가
+#     검색 경로에 있어야 한다
+#
+# setenv 는 순정 그대로 전부 둔다. 첫 이식 때 HWAPI_DEBUG_PATHS 와
+# STATS_INSTANCE 를 빠뜨렸고 HAL 이 SIGSEGV 로 죽었다. getenv() 가 NULL 을
+# 돌려주는 경로일 수 있으므로 하나도 빼지 않는다.
+
+on property:vendor.haptics.ready=1
+    chown root root /sys/class/leds/cs40l25:vibrator/activate
+    chown root root /sys/class/leds/cs40l25:vibrator/brightness
+    chown root root /sys/class/leds/cs40l25:vibrator/duration
+    chown root root /sys/class/leds/cs40l25:vibrator/state
+    chown root root /sys/class/leds/cs40l25:vibrator/device/asp_enable
+    chown root root /sys/class/leds/cs40l25:vibrator/device/available_pwle_segments
+    chown root root /sys/class/leds/cs40l25:vibrator/device/clab_enable
+    chown root root /sys/class/leds/cs40l25:vibrator/device/comp_enable
+    chown root root /sys/class/leds/cs40l25:vibrator/device/cp_dig_scale
+    chown root root /sys/class/leds/cs40l25:vibrator/device/cp_trigger_duration
+    chown root root /sys/class/leds/cs40l25:vibrator/device/cp_trigger_index
+    chown root root /sys/class/leds/cs40l25:vibrator/device/cp_trigger_q_sub
+    chown root root /sys/class/leds/cs40l25:vibrator/device/cp_trigger_queue
+    chown root root /sys/class/leds/cs40l25:vibrator/device/dig_scale
+    chown root root /sys/class/leds/cs40l25:vibrator/device/exc_enable
+    chown root root /sys/class/leds/cs40l25:vibrator/device/f0_stored
+    chown root root /sys/class/leds/cs40l25:vibrator/device/f0_offset
+    chown root root /sys/class/leds/cs40l25:vibrator/device/fw_rev
+    chown root root /sys/class/leds/cs40l25:vibrator/device/gpio1_fall_dig_scale
+    chown root root /sys/class/leds/cs40l25:vibrator/device/gpio1_fall_index
+    chown root root /sys/class/leds/cs40l25:vibrator/device/gpio1_rise_dig_scale
+    chown root root /sys/class/leds/cs40l25:vibrator/device/gpio1_rise_index
+    chown root root /sys/class/leds/cs40l25:vibrator/device/heartbeat
+    chown root root /sys/class/leds/cs40l25:vibrator/device/hw_reset
+    chown root root /sys/class/leds/cs40l25:vibrator/device/num_waves
+    chown root root /sys/class/leds/cs40l25:vibrator/device/pwle
+    chown root root /sys/class/leds/cs40l25:vibrator/device/pwle_ramp_down
+    chown root root /sys/class/leds/cs40l25:vibrator/device/q_stored
+    chown root root /sys/class/leds/cs40l25:vibrator/device/redc_comp_enable
+    chown root root /sys/class/leds/cs40l25:vibrator/device/redc_stored
+    chown root root /sys/class/leds/cs40l25:vibrator/device/standby_timeout
+    chown root root /sys/class/leds/cs40l25:vibrator/device/vbatt_max
+    chown root root /sys/class/leds/cs40l25:vibrator/device/vbatt_min
+    chown root root /sys/class/leds/cs40l25:vibrator/device/vibe_state
+    start vendor.vibrator.cs40l25
+
+service vendor.vibrator.cs40l25 /vendor/bin/hw/android.hardware.vibrator-service.cs40l25
+    user root
+    group root oem_2993
+    setenv LD_LIBRARY_PATH /vendor/lib64:/vendor/lib:/system/lib64:/system/lib:/sbin
+    setenv PROPERTY_PREFIX ro.vendor.vibrator.hal.
+    setenv HWAPI_PATH_PREFIX /sys/class/leds/cs40l25:vibrator/
+    setenv HWAPI_DEBUG_PATHS "
+        device/asp_enable
+        device/available_pwle_segments
+        device/clab_enable
+        device/f0_stored
+        device/f0_offset
+        device/fw_rev
+        device/gpio1_fall_dig_scale
+        device/gpio1_fall_index
+        device/gpio1_rise_dig_scale
+        device/gpio1_rise_index
+        device/heartbeat
+        device/num_waves
+        device/pwle
+        device/pwle_ramp_down
+        device/q_stored
+        device/redc_stored
+        device/vibe_state
+        state
+        "
+    setenv STATS_INSTANCE default
+    disabled
+    seclabel u:r:recovery:s0
