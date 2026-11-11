@@ -253,8 +253,24 @@ TW_EXTERNAL_STORAGE_MOUNT_POINT := "external_sd"
 TW_INCLUDE_REPACKTOOLS := true
 TW_INCLUDE_RESETPROP := true
 TW_INCLUDE_LIBRESETPROP := true
-TW_HAS_MTP := true
-TW_MTP_DEVICE := /dev/mtp_usb
+# MTP 는 뺀다. 켜 두면 adb 가 끊긴다.
+#
+# twrp.cpp:300 이 시작하자마자 Enable_MTP() 를 부르고, 그 함수는
+#   property_set("sys.usb.config", "none");      <- configfs 핸들러가 UDC 해제
+#   property_set("sys.usb.config", "mtp,adb");   <- 이 값의 configfs 핸들러가 없음
+# 을 한다. AOSP 리커버리 init.rc 의 configfs 핸들러는 adb/fastboot/sideload/none
+# 뿐이고 가젯에 ffs.mtp 함수도 없다. TWRP 가 넣는 init.recovery.usb.rc 는 구형
+# /sys/class/android_usb 방식이라 GKI 커널에서는 아무 일도 하지 않고 adbd 만
+# 다시 띄운다. 결과: adbd 는 살아 있는데 UDC 가 해제된 채라 PC 에서 안 보인다.
+# (리커버리를 pkill 하면 recovery_main.cpp:191 이 다시 adb 로 세팅해 돌아온다)
+#
+# 플래그 의미에 주의: Android.mk:249 는 "TW_EXCLUDE_MTP 가 비어 있으면" MTP 를
+# 켠다. 예전에 있던 TW_HAS_MTP := true 는 make 가 읽지 않는 줄이었고,
+# TW_MTP_DEVICE := /dev/mtp_usb 는 이 커널에 없는 구형 f_mtp 노드였다.
+#
+# MTP 를 제대로 살리려면 ffs.mtp 함수, /dev/usb-ffs/mtp 마운트,
+# sys.usb.ffs.mtp.ready 를 기다리는 mtp,adb configfs 핸들러가 필요하다.
+TW_EXCLUDE_MTP := true
 
 # ro.recovery.usb.* 에서 확인
 TW_DEVICE_VERSION := pdx256-SHIMANTO-1.1.0
